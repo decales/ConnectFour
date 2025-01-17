@@ -1,0 +1,3 @@
+#!/bin/bash
+./mvnw clean
+rm -rf out/
