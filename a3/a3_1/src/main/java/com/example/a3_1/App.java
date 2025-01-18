@@ -23,13 +23,16 @@ public class App extends Application {
       // Initialize model
       Model model = new Model(displayHeight * displayRatio);
 
+      // Initialize controller
+      Controller controller = new Controller(model);
+
       // // Initialize UI components
       HBox root = new HBox();
       // root.paddingProperty().set(new Insets(rootPadding));
       // root.spacingProperty().set(rootPadding);
       // root.setStyle("-fx-background-color: lightgrey");
 
-      GameBoard gameBoard = new GameBoard();
+      GameBoard gameBoard = new GameBoard(6, 7, controller);
 
       model.addSubscribers(gameBoard);
       root.getChildren().addAll(gameBoard);

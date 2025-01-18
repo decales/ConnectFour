@@ -1,37 +1,39 @@
 package com.example.a3_1.view;
 
+import com.example.a3_1.Controller;
 import com.example.a3_1.model.PublishSubscribe;
+import com.example.a3_1.model.Model.PieceType;
 
 import javafx.geometry.Insets;
+import javafx.scene.Node;
 import javafx.scene.layout.GridPane;
-import javafx.scene.paint.Color;
-import javafx.scene.shape.Circle;
 
 public class GameBoard extends GridPane implements PublishSubscribe {
 
-  public GameBoard() {
+  public GameBoard(int numRows, int numCols, Controller controller) {
+
+    // initialize BoardPiece children and add them to the grid
+    for (int i = 0; i < numRows; i++) {
+      for (int j = 0; j < numCols; j++) {
+        add(new BoardPiece(i, j), j, i);
+      }
+    }
+    // setup event handlers
+    setOnMouseClicked(controller::handleMouseClicked);
+    setOnMouseMoved(controller::handleMouseMoved);
+    setOnMouseExited(controller::handleMouseExited);
 
     setGridLinesVisible(true);
     setStyle("-fx-background-color: lightgrey");
-
   }
 
-  public void update(double displaySize, int[][] gameBoard) {
-
-    for (int i = 0; i < gameBoard.length; i++) {
-      for (int j = 0; j < gameBoard[0].length; j++) {
-
-        Color pieceColor = null;
-        switch (gameBoard[i][j]) {
-          case 0 -> pieceColor = Color.TRANSPARENT; // No piece 
-          case 1 -> pieceColor = Color.BLACK; // CPU piece
-          case 2 -> pieceColor = Color.WHITE; // Player piece
-        }
-
-        Circle tilePiece = new Circle(displaySize * 0.05);
-        tilePiece.setFill(pieceColor);
-        setMargin(tilePiece, new Insets(displaySize * 0.01));
-        add(tilePiece, j, i);
+  public void update(double displaySize, PieceType[][] gameBoard) {
+    for (Node child : getChildren()) {
+      if (child instanceof BoardPiece piece) {
+        // update each piece on the board based on the data from the model
+        piece.setType(gameBoard[piece.row][piece.col], false);
+        piece.setRadius(displaySize * 0.05);
+        setMargin(piece, new Insets(displaySize * 0.01));
       }
     }
   }
