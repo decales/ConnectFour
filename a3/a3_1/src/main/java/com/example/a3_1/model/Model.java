@@ -2,7 +2,9 @@ package com.example.a3_1.model;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.LinkedList;
 import java.util.List;
+import java.util.Queue;
 
 public class Model {
 
@@ -38,8 +40,8 @@ public class Model {
         gameBoard[previewRow][previewCol] = PieceType.None; 
       }
 
-      int row = nextValidRow(col);
-      if (nextValidRow(col) != -1) { // check if the column is not full
+      int row = nextValidRow(gameBoard, col);
+      if (row != -1) { // check if the column is not full
         // update the piece preview position and set it on the board
         previewRow = row;
         previewCol = col;
@@ -63,34 +65,25 @@ public class Model {
         isPlayerTurn = false; // end of player turn
         
         // Check if the move that was played results in a win
-        if (isWinningMove(previewRow, previewCol, PieceType.Player)) {
+        if (isWinningMove(gameBoard, previewRow, previewCol, PieceType.Player)) {
           System.out.println("wonnered");
         }
 
+        GameStateNode stateTree = getGameStateTree(); 
         updateSubscribers();
-        
         // try { Thread.sleep(1000); } catch (InterruptedException e) {}
-
         // Computer's turn to place
         isPlayerTurn = true;
-
         updateSubscribers();
       }
     }
   }
 
-  private void miniMax() {
-    // Move priorities:
-    // 1. Win, create sequence of 4
-    // 2. Prevent opponent win, block their potential sequence of 4
-    // 3. Place with the most adjacent same pieces
-    // 4. Place with the most nearby same pieces
-  }
 
-  public int nextValidRow(int col) {
+  public int nextValidRow(PieceType[][] board, int col) {
     // Return the next row a piece can be placed in for a column,
-    for (int row = gameBoard.length - 1; row >= 0; row--) { // Search for tile to place piece from bottom up
-      if (gameBoard[row][col] == PieceType.None) { // Place piece on tile if there isn't one already
+    for (int row = board.length - 1; row >= 0; row--) { // Search for tile to place piece from bottom up
+      if (board[row][col] == PieceType.None) { // Place piece on tile if there isn't one already
         return row;
       } 
     }
@@ -98,88 +91,144 @@ public class Model {
   }
 
 
-  // private void checkSequence() {
+  private GameStateNode getGameStateTree() {
+    GameStateNode stateRoot = new GameStateNode(gameBoard, PieceType.Player);
+    getGameStateTree(stateRoot, 0);
+    return stateRoot;
+  }
+  
+
+  private void getGameStateTree(GameStateNode currentState, int depth) {
+
+    if (depth == 4) return; // Limit recursive depth
+    
+    // Check all columns for the possible moves given the current state
+    for (int col = 0; col < currentState.board[0].length; col++) {
+
+      int row = nextValidRow(currentState.board, col);
+      if (row != -1) { // column is not full -> move is valid
+
+        // Create child state representing the move
+        PieceType pieceToPlay = (currentState.lastToPlay == PieceType.Player) ? PieceType.Computer : PieceType.Player;
+        PieceType[][] childBoard = getChildBoard(currentState.board, row, col, pieceToPlay);
+        GameStateNode childState = new GameStateNode(childBoard, pieceToPlay);
+
+        currentState.addChild(childState); // Link the child to the current node to create tree
+
+        if (!isWinningMove(childState.board, row, col, pieceToPlay)) {
+          getGameStateTree(childState, depth + 1);
+        }
+      }
+    }
+  }
+        // Score the child board state based on how good the move is:
+        // +1000 for win
+        // +100 for loss prevention
+        // +x based on the positions of matching pieces
+        // // Priority #1 - check if move would result in win
+        // if (isWinningMove(childBoard, row, col, pieceToPlay)) childState.addMinimaxValue(1000);
+        //
+        // // Priority #2 - check if move would prevent a loss
+        // if (i
+  // sWinningMove(childBoard, row, col, nextPieceToPlay)) childState.addMinimaxValue(100);
+        //
+        // // Priority #3 - caluclate points based on the distances between the move and each matching piece on the board
+        // childState.addMinimaxValue(0);
+
+
+  // // breadth-first version
+  // private GameStateNode getGameStateTree() {
   //
-  //   for (int i = 0; i < gameBoard.length; i++) {
-  //     for(int j = 0; j < gameBoard[0].length; j++) {
-  //       if (gameBoard[i][j] == PieceType.Player) {
-  //         if (checkSequence(i, j, null, PieceType.Player, 1)) {
-  //           System.out.println("win");
+  //   Queue<GameStateNode> nodeQueue = new LinkedList<GameStateNode>();
+  //   GameStateNode rootNode = new GameStateNode(gameBoard, PieceType.Player);
+  //   nodeQueue.add(rootNode);
+  //
+  //   while(!nodeQueue.isEmpty()) {
+  //
+  //     GameStateNode currentNode = nodeQueue.poll();
+  //
+  //     printBoard(currentNode.board);
+  //
+  //     // Check all columns for the possible moves given the current state
+  //     for (int col = 0; col < currentNode.board[0].length; col++) {
+  //
+  //       int row = nextValidRow(currentNode.board, col);
+  //       if (row != -1) { // column is not full -> move is valid
+  //
+  //         // Create child state representing the move
+  //         PieceType pieceToPlay = (currentNode.lastToPlay == PieceType.Player) ? PieceType.Computer : PieceType.Player;
+  //         PieceType[][] childBoard = getChildBoard(currentNode.board, row, col, pieceToPlay);
+  //         GameStateNode childNode = new GameStateNode(childBoard, pieceToPlay);
   //         
+  //         currentNode.addChild(childNode); // Link the child to the current node to create tree
+  //
+  //         // printBoard(childBoard);
+  //
+  //         // Add child to queue to determine its children if state does not result in win
+  //         if (!isWinningMove(childBoard, row, col, pieceToPlay)) {
+  //           nodeQueue.add(childNode);
   //         }
   //       }
   //     }
   //   }
+  //   return rootNode;
   // }
 
-
-  // private boolean checkSequence(int row, int col, int[] currentDirection, PieceType piece, int sequenceCount) {
-  //
-  //   // Sequence of 4 found, win
-  //   if (sequenceCount == 4) {
-  //     return true;
-  //   }
-  //
-  //   // if there is no current direction, this is the first piece of a potential sequence, traverse all four possible directions to check for sequences
-  //   // otherwise, this piece is part of a direction that is already being explored, continue traversing in that direction only
-  //   int[][] traversalDirections = (currentDirection == null) ? new int[][] {{0,1}, {1,0}, {1,1}, {1,-1}} : new int[][] { currentDirection };
-  //   
-  //   for (int[] direction: traversalDirections) { 
-  //     int adjRow = row + direction[0];
-  //     int adjCol = col + direction[1];
-  //
-  //     // check if adjacent is in boundaries of grid
-  //     if (adjRow < gameBoard.length && adjRow >= 0 && adjCol < gameBoard[0].length && adjCol >= 0) {
-  //       
-  //       // if the adjacent piece is the same as the current, traverse to it
-  //       if (gameBoard[adjRow][adjCol] == piece ) {
-  //         return checkSequence(adjRow, adjCol, direction, piece, sequenceCount + 1);
-  //       }
-  //     }
-  //   }
-  //   return false;
-  // }
-
-
-  private boolean isWinningMove(int row, int col, PieceType piece) {
-
-      // check horizontal sequence
-      int horizontalLength = 1 + checkSequence(row, col, new int[] {0, 1}, piece) + checkSequence(row, col, new int[] {0, -1}, piece);
-      if (horizontalLength >= 4) {
-        return true;
+  private void printBoard(PieceType[][] board) {
+    for (int i = 0; i < board.length; i++) {
+      for (int j = 0; j < board[0].length; j++) {
+        switch(board[i][j]) {
+          case PieceType.None -> System.out.print(". ");
+          case PieceType.Player -> System.out.print("X ");
+          case PieceType.Computer -> System.out.print("O ");
+          default -> {}
+        }
       }
-      // check vertical sequence
-      int verticalLength = 1 + checkSequence(row, col, new int[] {1, 0}, piece) + checkSequence(row, col, new int[] {-1, 0}, piece);
-      if (verticalLength >= 4) {
-        return true;
-      }
-      // check left diagonal sequence
-      int leftDiagonalLength = 1 + checkSequence(row, col, new int[] {1, 1}, piece) + checkSequence(row, col, new int[] {-1, -1}, piece);
-      if (leftDiagonalLength >= 4) {
-        return true;
-      }
-      // check right horizontal sequence
-      int rightDiagonalLength = 1 + checkSequence(row, col, new int[] {-1, 1}, piece) + checkSequence(row, col, new int[] {1, -1}, piece);
-      if (rightDiagonalLength >= 4) {
-        return true;
-      }
-
-      // otherwise no sequences found, move does not result in win
-      return false;
+      System.out.println();
+    }
+    System.out.println();
   }
 
-  private int checkSequence(int row, int col, int[] direction, PieceType piece) {
+  private PieceType[][] getChildBoard(PieceType[][] board, int moveRow, int moveCol, PieceType pieceToPlay) {
+    // helper function to create shallow clone of a gameboard after a move has occured
+    PieceType[][] clone = new PieceType[board.length][board[0].length];
+
+    // Copy the values from the parent board to the child board
+    for (int i = 0; i < clone.length; i++) {
+      for (int j = 0; j < clone[0].length; j++) {
+        clone[i][j] = board[i][j];
+      }
+    }
+    // Add the move to the child board
+    clone[moveRow][moveCol] = pieceToPlay;
+    return clone;
+  }
+
+
+  private boolean isWinningMove(PieceType[][] board, int row, int col, PieceType piece) {
+    // Very cool and fancy loop to check if a move results in a horizontal, vertical, or diagonal sequence of at least 4, checked in this order
+    for (int[][] direction: new int[][][] { {{0,1},{0,-1}}, {{1,0},{-1,0}}, {{1,1},{-1,-1}}, {{-1,1},{1,-1}} }) {
+      if (1 + getSequence(board, row, col, direction[0], piece) + getSequence(board, row, col, direction[1], piece) >= 4) {
+        return true; // sequence found, move results in win
+      }
+    }
+    return false; // no sequences found, move does not result in win 
+  }
+
+
+  private int getSequence(PieceType[][] board, int row, int col, int[] direction, PieceType piece) {
+    // add the direction offsets to the current row and col to get adjacent row and col
     int adjRow = row + direction[0];
     int adjCol = col + direction[1];
 
     // adjacent row and col are out of grid bounds
-    if (adjRow < 0 || adjRow >= gameBoard.length || adjCol < 0 || adjCol >= gameBoard[0].length) return 0;
+    if (adjRow < 0 || adjRow >= board.length || adjCol < 0 || adjCol >= board[0].length) return 0;
     
     // piece at adjacent row and col does not match
-    if (gameBoard[adjRow][adjCol] != piece) return 0;
+    if (board[adjRow][adjCol] != piece) return 0;
 
     // otherwhise traverse to adjacent piece and increment count
-    return 1 + checkSequence(adjRow, adjCol, direction, piece);
+    return 1 + getSequence(board, adjRow, adjCol, direction, piece);
   }
   
 
