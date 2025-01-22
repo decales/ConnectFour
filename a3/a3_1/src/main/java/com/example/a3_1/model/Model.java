@@ -10,7 +10,8 @@ public class Model {
 
   private List<PublishSubscribe> subscribers;
   private double displaySize;
-  private PieceType[][] gameBoard;
+  private BoardStateNode boardState;
+  private int minimaxDepth;
   private boolean isPlayerTurn;
   private BoardPosition previewPosition;
 
@@ -20,15 +21,16 @@ public class Model {
     subscribers = new ArrayList<>();
 
     initializeGameBoard();
+    minimaxDepth = 2;
     isPlayerTurn = true;
     previewPosition = new BoardPosition(0, 0);
   }
 
 
   public void initializeGameBoard() {
-    // initialize empty 6x7 board
-    gameBoard = new PieceType[6][7]; 
-    for (int i = 0; i < gameBoard.length; i++) Arrays.fill(gameBoard[i], PieceType.None);
+    // initialize state with empty 6x7 board
+    boardState = new BoardStateNode(new PieceType[6][7]);
+    for (int i = 0; i < boardState.board.length; i++) Arrays.fill(boardState.board[i], PieceType.None);
     updateSubscribers();
   }
 
@@ -36,15 +38,15 @@ public class Model {
   public void previewTurn(int col) {
     if (isPlayerTurn) {
      // clear the previous piece preview indicator
-      if (gameBoard[previewPosition.row][previewPosition.col] == PieceType.Preview) {
-        gameBoard[previewPosition.row][previewPosition.col] = PieceType.None; 
+      if (boardState.board[previewPosition.row][previewPosition.col] == PieceType.Preview) {
+        boardState.board[previewPosition.row][previewPosition.col] = PieceType.None; 
       }
 
-      int row = nextValidRow(gameBoard, col);
+      int row = nextValidRow(boardState.board, col);
       if (row != -1) { // check if the column is not full
         // update the piece preview position and set it on the board
         previewPosition = new BoardPosition(row, col);
-        gameBoard[previewPosition.row][previewPosition.col] = PieceType.Preview;
+        boardState.board[previewPosition.row][previewPosition.col] = PieceType.Preview;
       }
       updateSubscribers();
     }
@@ -53,34 +55,33 @@ public class Model {
 
   public void clearPreview() {
     // clears the piece preview indicator when the mouse is not on the board, because this just looks nicer
-    gameBoard[previewPosition.row][previewPosition.col] = PieceType.None;
+    boardState.board[previewPosition.row][previewPosition.col] = PieceType.None;
     updateSubscribers();
   }
 
 
   public void playTurn() {
-    if (isPlayerTurn) { // player's turn to place
+    if (isPlayerTurn) { // used as a 'lock' to prevent player placing pieces when it is the computer's turn
 
-      // if the piece preview is on the screen, we know which column the player has selected and that the move is valid / the column isn't full
-      if (gameBoard[previewPosition.row][previewPosition.col] == PieceType.Preview) {
+      // if the piece preview is on the screen, the player has a selected a valid column to place a piece
+      if (boardState.board[previewPosition.row][previewPosition.col] == PieceType.Preview) {
 
-        BoardStateNode playerMoveState = new BoardStateNode(gameBoard, previewPosition); // represent current state of the board after the move
-        gameBoard[previewPosition.row][previewPosition.col] = PieceType.Player; // update gameBoard (different than that in state) with move
+        // place the piece using the position of the preview
+        boardState = new BoardStateNode(boardState, previewPosition); // represent current state of the board after the move
         isPlayerTurn = false; // end of player's turn
         
         // Check if the move that was played results in a win
-        if (isWinningState(playerMoveState)) {
+        if (boardState.isWinningState()) {
           System.out.println("you wonnered");
           return;
         }
 
         // Computer's turn, retrieve the state representing the best move it can make given the player's move
-        BoardStateNode computerMoveState = getComputerMove(playerMoveState); 
-        gameBoard[computerMoveState.movePosition.row][computerMoveState.movePosition.col] = PieceType.Computer;
+        boardState = getComputerMove(); 
         updateSubscribers();
 
         // Check if the move that was played results in a win
-        if (isWinningState(computerMoveState)) {
+        if (boardState.isWinningState()) {
           System.out.println("computer wonnered");
           return;
         }
@@ -103,49 +104,30 @@ public class Model {
   }
   
 
-  private BoardStateNode getComputerMove(BoardStateNode currentState) {
-    // recursively build state tree and determine minimax values from a current board state
-    getMinimaxStateTree(currentState, 4);
+  private BoardStateNode getComputerMove() {
+    // recursively build state tree and determine minimax values from the current board state
+    getMinimaxStateTree(boardState, Integer.MIN_VALUE, Integer.MAX_VALUE, minimaxDepth);
 
     // Retrieve state representing best move the computer can make given the current state
-    // int minimumValue = Integer.MAX_VALUE;
-    // BoardStateNode bestState = null;
-    //
-    // for (BoardStateNode child : currentState.children) {
-    //   System.out.println(child.minimaxValue);
-    //   if (child.minimaxValue < minimumValue) {
-    //     minimumValue = child.minimaxValue;
-    //     bestState = child;
-    //   }
-    // }
-    int minimumValue = Integer.MIN_VALUE;
     BoardStateNode bestState = null;
-
-    for (BoardStateNode child : currentState.children) {
-      System.out.println(child.minimaxValue);
-      if (child.minimaxValue > minimumValue) {
-        minimumValue = child.minimaxValue;
-        bestState = child;
+    for (BoardStateNode childState : boardState.children) {
+      if (childState.minimaxValue <= boardState.minimaxValue) {
+        boardState.minimaxValue = childState.minimaxValue;
+        bestState = childState;
       }
     }
+    System.out.println("Computer choose " + bestState.minimaxValue);
+    boardState.children.clear();
     return bestState;
   }
 
 
-  private void getMinimaxStateTree(BoardStateNode currentState, int depth) {
+  private void getMinimaxStateTree(BoardStateNode currentState, int alpha, int beta, int depth) {
     
-    // current state is a leaf-node, score it based on how good its move is
-    if (isWinningState(currentState) || depth == 0) {
-
-      currentState.minimaxValue = 0; // clear default value used for internal nodes
-
-      // Priority #1 - move results in a win: +1000
-      if (isWinningState(currentState)) currentState.minimaxValue += 1000;
-      // Priority #2 - move prevents a loss: +100
-      if (isWinningState(new BoardStateNode(currentState, currentState.movePosition))) currentState.minimaxValue += 100;
-      // Priority #3 - caluclate points based on the distances between the move and each matching piece on the board
-      currentState.minimaxValue += 20;
-
+    // current state is a leaf-node (winning state or max depth state) score it based on how good its move is
+    if (currentState.isWinningState() || depth == 0) {
+      currentState.evaluateStateBoard();
+      System.out.println(String.format("%s node - depth %d - set %d", currentState.pieceMoved, depth, currentState.minimaxValue));
       return;
     }
 
@@ -159,111 +141,36 @@ public class Model {
         BoardStateNode childState = new BoardStateNode(currentState, new BoardPosition(row, col));
         currentState.addChild(childState);
 
-        getMinimaxStateTree(childState, depth - 1); // continue to recursively build tree
+        getMinimaxStateTree(childState, alpha, beta, depth - 1); // continue to recursively build tree
 
-        // current node's value can now be determined after recursion, take min or max of Vchild based on which piece is playing
-        currentState.minimaxValue = (currentState.pieceMoved == PieceType.Computer)
-        ? Math.min(currentState.minimaxValue, childState.minimaxValue) // computer - take min value
-        : Math.max(currentState.minimaxValue, childState.minimaxValue); // player - take max value
-      }
-    }
-  }
+        // current node's value can now be determined after recursion, take min or max of child based on which piece is playing
+        switch(currentState.pieceMoved) {
 
-
-  // // breadth-first version
-  // private BoardStateNode getGameStateTree() {
-  //
-  //   Queue<BoardStateNode> nodeQueue = new LinkedList<BoardStateNode>();
-  //   BoardStateNode rootNode = new BoardStateNode(gameBoard, PieceType.Player);
-  //   nodeQueue.add(rootNode);
-  //
-  //   while(!nodeQueue.isEmpty()) {
-  //
-  //     BoardStateNode currentNode = nodeQueue.poll();
-  //
-  //     printBoard(currentNode.board);
-  //
-  //     // Check all columns for the possible moves given the current state
-  //     for (int col = 0; col < currentNode.board[0].length; col++) {
-  //
-  //       int row = nextValidRow(currentNode.board, col);
-  //       if (row != -1) { // column is not full -> move is valid
-  //
-  //         // Create child state representing the move
-  //         PieceType pieceToPlay = (currentNode.lastToPlay == PieceType.Player) ? PieceType.Computer : PieceType.Player;
-  //         PieceType[][] childBoard = getChildBoard(currentNode.board, row, col, pieceToPlay);
-  //         BoardStateNode childNode = new BoardStateNode(childBoard, pieceToPlay);
-  //         
-  //         currentNode.addChild(childNode); // Link the child to the current node to create tree
-  //
-  //         // printBoard(childBoard);
-  //
-  //         // Add child to queue to determine its children if state does not result in win
-  //         if (!isWinningMove(childBoard, row, col, pieceToPlay)) {
-  //           nodeQueue.add(childNode);
-  //         }
-  //       }
-  //     }
-  //   }
-  //   return rootNode;
-  // }
-
-
-  private void printBoard(PieceType[][] board) {
-    for (int i = 0; i < board.length; i++) {
-      for (int j = 0; j < board[0].length; j++) {
-        switch(board[i][j]) {
-          case PieceType.None -> System.out.print(". ");
-          case PieceType.Player -> System.out.print("X ");
-          case PieceType.Computer -> System.out.print("O ");
-          default -> {}
+          case Computer -> { // take min value, check beta
+            currentState.minimaxValue = Math.min(currentState.minimaxValue, childState.minimaxValue);
+            beta = Math.min(currentState.minimaxValue, beta);
+          }
+          case Player -> { // take max value, check alpha
+            currentState.minimaxValue = Math.max(currentState.minimaxValue, childState.minimaxValue);
+            alpha = Math.max(currentState.minimaxValue, alpha);
+          }
         }
+        if (alpha >= beta) return; // no need to continue building tree, min/max of branch already determined
       }
-      System.out.println();
     }
-    System.out.println();
+    System.out.println(String.format("%s node - depth %d - choose %d\n", currentState.pieceMoved, depth, currentState.minimaxValue));
   }
 
-
-  private boolean isWinningState(BoardStateNode state) {
-    // Very cool and fancy loop to check if a move results in a horizontal, vertical, or diagonal sequence of at least 4, checked in this order
-    for (int[][] v: new int[][][] { {{0,1},{0,-1}}, {{1,0},{-1,0}}, {{1,1},{-1,-1}}, {{-1,1},{1,-1}} }) {
-
-      // length of sequence is the sum of the lengths traversing both opposing directions of v starting from the position of the move
-      int l1 = getSequence(state.board, state.movePosition.row, state.movePosition.col, v[0], state.pieceMoved);
-      int l2 = getSequence(state.board, state.movePosition.row, state.movePosition.col, v[1], state.pieceMoved);
-
-      // sequence found, move results in win
-      if (l1 + l2 + 1 >= 4) return true; // +1 to account for move
-    }
-    return false; // no sequences found, move does not result in win 
-  }
-
-
-  private int getSequence(PieceType[][] board, int row, int col, int[] direction, PieceType piece) {
-    // add the direction offsets to the current row and col to get adjacent row and col
-    int adjRow = row + direction[0];
-    int adjCol = col + direction[1];
-
-    // adjacent row and col are out of grid bounds
-    if (adjRow < 0 || adjRow >= board.length || adjCol < 0 || adjCol >= board[0].length) return 0;
-    
-    // piece at adjacent row and col does not match
-    if (board[adjRow][adjCol] != piece) return 0;
-
-    // otherwhise traverse to adjacent piece and increment count
-    return 1 + getSequence(board, adjRow, adjCol, direction, piece);
-  }
-  
 
   public void addSubscribers(PublishSubscribe subscribers) {
     this.subscribers = Arrays.asList(subscribers);
     updateSubscribers();
   }
 
+
   public void updateSubscribers() {
     subscribers.forEach(subscriber -> {
-      subscriber.update(displaySize, gameBoard);
+      subscriber.update(displaySize, boardState);
     });
   }
 }

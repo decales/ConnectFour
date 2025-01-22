@@ -1,8 +1,8 @@
 package com.example.a3_1.view;
 
 import com.example.a3_1.Controller;
+import com.example.a3_1.model.BoardStateNode;
 import com.example.a3_1.model.PublishSubscribe;
-import com.example.a3_1.model.Model.PieceType;
 
 import javafx.geometry.Insets;
 import javafx.scene.Node;
@@ -27,11 +27,11 @@ public class GameBoard extends GridPane implements PublishSubscribe {
     setStyle("-fx-background-color: lightgrey");
   }
 
-  public void update(double displaySize, PieceType[][] gameBoard) {
+  public void update(double displaySize, BoardStateNode boardState) {
     for (Node child : getChildren()) {
       if (child instanceof BoardPiece piece) {
         // update each piece on the board based on the data from the model
-        piece.setType(gameBoard[piece.row][piece.col], false);
+        piece.setType(boardState.board[piece.row][piece.col], false);
         piece.setRadius(displaySize * 0.05);
         setMargin(piece, new Insets(displaySize * 0.01));
       }
