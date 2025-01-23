@@ -1,8 +1,10 @@
 package com.example.a3_1.view;
 
 import com.example.a3_1.Controller;
+import com.example.a3_1.model.BoardPosition;
 import com.example.a3_1.model.BoardStateNode;
 import com.example.a3_1.model.PublishSubscribe;
+import com.example.a3_1.model.Model.GameState;
 
 import javafx.geometry.Insets;
 import javafx.scene.Node;
@@ -24,16 +26,19 @@ public class GameBoard extends GridPane implements PublishSubscribe {
     setOnMouseExited(controller::handleMouseExited);
 
     setGridLinesVisible(true);
-    setStyle("-fx-background-color: lightgrey");
+    setStyle("-fx-background-color: #2a2e3d");
   }
 
-  public void update(double displaySize, BoardStateNode boardState) {
+  public void update(double displaySize, BoardStateNode boardState, GameState gameState, int playerWinCount, int computerWinCount) {
     for (Node child : getChildren()) {
       if (child instanceof BoardPiece piece) {
+        
+        // if the game has ended, check if a piece is part of the game winning sequence
+        boolean inSequence = (gameState != GameState.InProgress) ? boardState.winningSequence.contains(new BoardPosition(piece.row, piece.col)) : false;
+        
         // update each piece on the board based on the data from the model
-        piece.setType(boardState.board[piece.row][piece.col], false);
-        piece.setRadius(displaySize * 0.05);
-        setMargin(piece, new Insets(displaySize * 0.01));
+        piece.setSize(displaySize * 0.05);
+        piece.setType(boardState.board[piece.row][piece.col], inSequence);
       }
     }
   }

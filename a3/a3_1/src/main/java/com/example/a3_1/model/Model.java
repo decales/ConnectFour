@@ -6,41 +6,49 @@ import java.util.List;
 
 public class Model {
 
-  public enum PieceType { Player, Computer, None, Preview };
+  public enum PieceType { Computer, Player, None, Preview };
+  public enum GameState { InProgress, ComputerWin, PlayerWin };
 
   private List<PublishSubscribe> subscribers;
   private double displaySize;
   private BoardStateNode boardState;
   private int minimaxDepth;
-  private boolean isPlayerTurn;
   private BoardPosition previewPosition;
+  private GameState gameState;
+  private int playerWinCount, computerWinCount;
 
   public Model(double displaySize) {
 
+    // initialize application data
     this.displaySize = displaySize;
     subscribers = new ArrayList<>();
 
-    initializeGameBoard();
-    minimaxDepth = 2;
-    isPlayerTurn = true;
-    previewPosition = new BoardPosition(0, 0);
+    minimaxDepth = 4;
+    initializeGame(); 
   }
 
 
-  public void initializeGameBoard() {
-    // initialize state with empty 6x7 board
+  public void initializeGame() {
+    // initialize game state and vars
+    gameState = GameState.InProgress;
+    previewPosition = new BoardPosition(0, 0);
+
+    // initialize board state with empty 6x7 board
     boardState = new BoardStateNode(new PieceType[6][7]);
     for (int i = 0; i < boardState.board.length; i++) Arrays.fill(boardState.board[i], PieceType.None);
     updateSubscribers();
   }
 
 
+  public void setMinimaxDepth(int minimaxDepth) {
+    this.minimaxDepth = minimaxDepth;
+  }
+
+
   public void previewTurn(int col) {
-    if (isPlayerTurn) {
-     // clear the previous piece preview indicator
-      if (boardState.board[previewPosition.row][previewPosition.col] == PieceType.Preview) {
-        boardState.board[previewPosition.row][previewPosition.col] = PieceType.None; 
-      }
+    if (boardState.pieceMoved == PieceType.Computer && gameState == GameState.InProgress) { // player's turn
+      
+      clearPreview(); // clear the previous piece preview indicator
 
       int row = nextValidRow(boardState.board, col);
       if (row != -1) { // check if the column is not full
@@ -54,53 +62,55 @@ public class Model {
 
 
   public void clearPreview() {
-    // clears the piece preview indicator when the mouse is not on the board, because this just looks nicer
-    boardState.board[previewPosition.row][previewPosition.col] = PieceType.None;
-    updateSubscribers();
+    if (boardState.board[previewPosition.row][previewPosition.col] == PieceType.Preview) {
+      boardState.board[previewPosition.row][previewPosition.col] = PieceType.None;
+      updateSubscribers();
+    }
   }
 
 
   public void playTurn() {
-    if (isPlayerTurn) { // used as a 'lock' to prevent player placing pieces when it is the computer's turn
+    updateSubscribers();
+    if (gameState == GameState.InProgress) {
 
-      // if the piece preview is on the screen, the player has a selected a valid column to place a piece
-      if (boardState.board[previewPosition.row][previewPosition.col] == PieceType.Preview) {
-
-        // place the piece using the position of the preview
-        boardState = new BoardStateNode(boardState, previewPosition); // represent current state of the board after the move
-        isPlayerTurn = false; // end of player's turn
+      switch(boardState.pieceMoved) { // next piece to play is the opposing piece of the last piece played in the current state                      
         
-        // Check if the move that was played results in a win
-        if (boardState.isWinningState()) {
-          System.out.println("you wonnered");
-          return;
+        case Computer -> { // player's turn
+          if (boardState.board[previewPosition.row][previewPosition.col] == PieceType.Preview) { // only play turn given the player's input
+            boardState = new BoardStateNode(boardState, previewPosition); // get updated state with player move
+
+            // check if move was a win, update state and win count if so
+            if (boardState.isWinningState()) {
+              gameState = GameState.PlayerWin;
+              playerWinCount ++;
+            }
+            playTurn(); // play opponent's turn
+          }
         }
 
-        // Computer's turn, retrieve the state representing the best move it can make given the player's move
-        boardState = getComputerMove(); 
-        updateSubscribers();
-
-        // Check if the move that was played results in a win
-        if (boardState.isWinningState()) {
-          System.out.println("computer wonnered");
-          return;
+        case Player -> { // computer's turn
+          boardState = getComputerMove(); // get updated state with computer move
+          
+          // check if move was a win, update state and win count if so
+          if (boardState.isWinningState()) {
+            gameState = GameState.ComputerWin;
+            computerWinCount ++;
+          }
+          playTurn(); // play opponent's turn
         }
-
-        // try { Thread.sleep(1000); } catch (InterruptedException e) {}
-        isPlayerTurn = true;
       }
     }
   }
 
 
-  public int nextValidRow(PieceType[][] board, int col) {
-    // Return the next row a piece can be placed in for a column,
+  private int nextValidRow(PieceType[][] board, int col) {
+    // return the next row a piece can be placed in for a column,
     for (int row = board.length - 1; row >= 0; row--) { // Search for tile to place piece from bottom up
       if (board[row][col] == PieceType.None) { // Place piece on tile if there isn't one already
         return row;
       } 
     }
-    return -1; // if the column is full, return -1
+    return -1; // column is full, -1 for no valid move
   }
   
 
@@ -108,7 +118,7 @@ public class Model {
     // recursively build state tree and determine minimax values from the current board state
     getMinimaxStateTree(boardState, Integer.MIN_VALUE, Integer.MAX_VALUE, minimaxDepth);
 
-    // Retrieve state representing best move the computer can make given the current state
+    // retrieve state representing best move the computer can make given the current state
     BoardStateNode bestState = null;
     for (BoardStateNode childState : boardState.children) {
       if (childState.minimaxValue <= boardState.minimaxValue) {
@@ -131,13 +141,13 @@ public class Model {
       return;
     }
 
-    // Otherwise, current state is internal node, check all columns of its board to determine which moves can be made
+    // otherwise, current state is internal node, check all columns of its board to determine which moves can be made
     for (int col = 0; col < currentState.board[0].length; col++) {
 
       int row = nextValidRow(currentState.board, col);
       if (row != -1) {
 
-        // Create child node representing the board state after the move, and link it to the current state node
+        // create child node representing the board state after the move, and link it to the current state node
         BoardStateNode childState = new BoardStateNode(currentState, new BoardPosition(row, col));
         currentState.addChild(childState);
 
@@ -162,7 +172,7 @@ public class Model {
   }
 
 
-  public void addSubscribers(PublishSubscribe subscribers) {
+  public void addSubscribers(PublishSubscribe... subscribers) {
     this.subscribers = Arrays.asList(subscribers);
     updateSubscribers();
   }
@@ -170,7 +180,7 @@ public class Model {
 
   public void updateSubscribers() {
     subscribers.forEach(subscriber -> {
-      subscriber.update(displaySize, boardState);
+      subscriber.update(displaySize, boardState, gameState, playerWinCount, computerWinCount);
     });
   }
 }

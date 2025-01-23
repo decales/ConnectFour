@@ -1,6 +1,8 @@
 package com.example.a3_1.model;
 
 import java.util.ArrayList;
+
+
 import com.example.a3_1.model.Model.PieceType;
 
 public class BoardStateNode {
@@ -8,6 +10,7 @@ public class BoardStateNode {
   public PieceType[][] board;
   protected PieceType pieceMoved;
   protected BoardPosition movePosition;
+  public ArrayList<BoardPosition> winningSequence;
   protected int minimaxValue;
   protected ArrayList<BoardStateNode> children;
 
@@ -15,20 +18,21 @@ public class BoardStateNode {
   public BoardStateNode(PieceType[][] board) {
     this.board = board;
     pieceMoved = PieceType.Computer;
+    movePosition = new BoardPosition(0, 0);
     minimaxValue = Integer.MAX_VALUE;
   }
 
   // Constructor for board state after a move
   public BoardStateNode(BoardStateNode parentState, BoardPosition movePosition) {
 
-    // Keep track of which piece moved and where
+    // keep track of which piece moved and where
     pieceMoved = (parentState.pieceMoved == PieceType.Computer) ? PieceType.Player : PieceType.Computer;
     this.movePosition = movePosition;
 
-    // Create state board from parent board
+    // create state board from parent board
     getStateBoard(parentState.board);
 
-    // Pre-set default minimax value for convenience in getMinimaxStateTree function
+    // pre-set default minimax value for convenience in getMinimaxStateTree function
     minimaxValue = (pieceMoved == PieceType.Computer) ? Integer.MAX_VALUE : Integer.MIN_VALUE;
   }
 
@@ -40,16 +44,16 @@ public class BoardStateNode {
 
 
   private void getStateBoard(PieceType[][] parentBoard) {
-    // create shallow clone of a gameboard after a move has occured
+    // create shallow clone of a gameboard after a move has occurred
     board = new PieceType[parentBoard.length][parentBoard[0].length];
 
-    // Copy the values from the parent board to the child board
+    // copy the values from the parent board to the child board
     for (int i = 0; i < board.length; i++) {
       for (int j = 0; j < board[0].length; j++) {
         board[i][j] = parentBoard[i][j];
       }
     }
-    // Add the move to the child board
+    // add the move to the child board
     board[movePosition.row][movePosition.col] = pieceMoved;
   }
 
@@ -59,9 +63,14 @@ public class BoardStateNode {
     for (int[][] v: new int[][][] { {{0,1},{0,-1}}, {{1,0},{-1,0}}, {{1,1},{-1,-1}}, {{-1,1},{1,-1}} }) {
       
       // length of sequence is the sum of the lengths traversing both opposing directions of v starting from the position of the move
-      int l1 = getSequence(movePosition.row, movePosition.col, v[0], pieceMoved);
-      int l2 = getSequence(movePosition.row, movePosition.col, v[1], pieceMoved);
-      if (10 + l1 + l2 >= 40) return true;
+      ArrayList<BoardPosition> sequence = getSequence(movePosition.row, movePosition.col, v[0], pieceMoved);
+      sequence.removeFirst();
+      sequence.addAll(getSequence(movePosition.row, movePosition.col, v[1], pieceMoved));
+
+      if (sequence.size() >= 4) {
+        winningSequence = sequence;
+        return true;
+      }
     }                                                               
     return false; // no sequences found, move does not result in win 
   }
@@ -72,39 +81,41 @@ public class BoardStateNode {
     int sequenceScore = 0;
     // for (int[] v: new int[][] { {0,1}, {0,-1}, {1,0}, {-1,0}, {1,1}, {-1,-1}, {-1,1}, {1,-1} }) {
     for (int[] v: new int[][] { {0,1}, {1,0}, {1,1}, {1,-1} }) {
-      
-      // retrieve the sequence score in a given direction v, +10 for each matching piece in the sequence
-      int l1 = getSequence(row, col, v, pieceType);
-
-      // if the value returned by getSequence is odd, the sequence ends at an empty tile -> potential winning sequence
-      // if (l1 % 2 == 1) sequenceScore += Math.pow((l1 - 1) / 10, 2); // exponential score for length of sequence;
-      sequenceScore += Math.pow(l1, 2);
+      // retrieve the a sequence of matching pieces in a given direction v, increment the score by the exponential seuqnce length
+      ArrayList<BoardPosition> sequence = getSequence(row, col, v, pieceType);
+      sequenceScore += Math.pow(sequence.size(), 2);
     }                                                               
     return sequenceScore;
   }
 
 
-  private int getSequence(int row, int col, int[] direction, PieceType pieceMoved) {
+  private ArrayList<BoardPosition> getSequence(int startRow, int startCol, int[] direction, PieceType pieceMoved) {
+    ArrayList<BoardPosition> sequence = new ArrayList<>();
+    sequence.add(new BoardPosition(startRow, startCol));
+    getSequence(sequence, direction, pieceMoved);
+    return sequence;
+  }
+
+
+  private void getSequence(ArrayList<BoardPosition> sequence, int[] direction, PieceType pieceMoved) {
     // add the direction offsets to the current row and col to get adjacent row and col
-    int adjRow = row + direction[0];
-    int adjCol = col + direction[1];
+    BoardPosition currentPosition = sequence.getLast();
+    int adjRow = currentPosition.row + direction[0];
+    int adjCol = currentPosition.col + direction[1];
 
     // sequence ends at grid boundary
-    if (adjRow < 0 || adjRow >= board.length || adjCol < 0 || adjCol >= board[0].length) return 0;
+    if (adjRow < 0 || adjRow >= board.length || adjCol < 0 || adjCol >= board[0].length) return;
     
-    // sequence ends at empty tile, add odd number to keep track of this property in return value
-    if (board[adjRow][adjCol] == PieceType.None) return 1;
-
     // sequence ends at opponent piece
-    if (board[adjRow][adjCol] != pieceMoved) return 0;
+    if (board[adjRow][adjCol] != pieceMoved) return;
 
-    // otherwhise traverse to adjacent piece and increment count +10 for additional matching piece
-    return 10 + getSequence(adjRow, adjCol, direction, pieceMoved);
+    // otherwhise traverse to adjacent piece in direction of sequence
+    sequence.add(new BoardPosition(adjRow, adjCol));
+    getSequence(sequence, direction, pieceMoved);
   }
 
 
   public void evaluateStateBoard() {
-
     // priority #1 - piece wins the game on last move
     if (isWinningState()) {
       minimaxValue = (pieceMoved == PieceType.Player) ? Integer.MAX_VALUE : Integer.MIN_VALUE;
