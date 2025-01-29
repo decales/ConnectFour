@@ -2,12 +2,13 @@ package com.example.a3_1.model;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Comparator;
 import java.util.List;
 
 public class Model {
 
   public enum PieceType { Computer, Player, None, Preview };
-  public enum GameState { InProgress, ComputerWin, PlayerWin };
+  public enum GameState { InProgress, ComputerWin, PlayerWin, Tie };
 
   private List<PublishSubscribe> subscribers;
   private double displaySize;
@@ -22,7 +23,6 @@ public class Model {
     // initialize application data
     this.displaySize = displaySize;
     subscribers = new ArrayList<>();
-
     minimaxDepth = 4;
     initializeGame(); 
   }
@@ -41,6 +41,7 @@ public class Model {
 
 
   public void setMinimaxDepth(int minimaxDepth) {
+    // used to set minimax depth in dropdown box
     this.minimaxDepth = minimaxDepth;
   }
 
@@ -62,7 +63,7 @@ public class Model {
 
 
   public void clearPreview() {
-    if (boardState.board[previewPosition.row][previewPosition.col] == PieceType.Preview) {
+    if (boardState.board[previewPosition.row][previewPosition.col] == PieceType.Preview && gameState == GameState.InProgress) {
       boardState.board[previewPosition.row][previewPosition.col] = PieceType.None;
       updateSubscribers();
     }
@@ -73,6 +74,11 @@ public class Model {
     updateSubscribers();
     if (gameState == GameState.InProgress) {
 
+      if (boardState.isTieState()) {
+        gameState = GameState.Tie;
+        return;
+      }
+
       switch(boardState.pieceMoved) { // next piece to play is the opposing piece of the last piece played in the current state                      
         
         case Computer -> { // player's turn
@@ -80,7 +86,7 @@ public class Model {
             boardState = new BoardStateNode(boardState, previewPosition); // get updated state with player move
 
             // check if move was a win, update state and win count if so
-            if (boardState.isWinningState()) {
+            if (boardState.isWinState()) {
               gameState = GameState.PlayerWin;
               playerWinCount ++;
             }
@@ -92,7 +98,7 @@ public class Model {
           boardState = getComputerMove(); // get updated state with computer move
           
           // check if move was a win, update state and win count if so
-          if (boardState.isWinningState()) {
+          if (boardState.isWinState()) {
             gameState = GameState.ComputerWin;
             computerWinCount ++;
           }
@@ -115,33 +121,38 @@ public class Model {
   
 
   private BoardStateNode getComputerMove() {
-    // recursively build state tree and determine minimax values from the current board state
-    getMinimaxStateTree(boardState, Integer.MIN_VALUE, Integer.MAX_VALUE, minimaxDepth);
+    // recursively build state tree and determine minimax values from the current board state (after player's move)
+    getMinimaxStateTree(boardState, -Double.MAX_VALUE, Double.MAX_VALUE, minimaxDepth);
 
     // retrieve state representing best move the computer can make given the current state
-    BoardStateNode bestState = null;
+    BoardStateNode bestState = new BoardStateNode(null);
     for (BoardStateNode childState : boardState.children) {
-      if (childState.minimaxValue <= boardState.minimaxValue) {
-        boardState.minimaxValue = childState.minimaxValue;
+      if (childState.isWinState()) {
+        bestState = childState;
+        break;
+      }
+      else if (childState.minimaxValue >= bestState.minimaxValue) {
         bestState = childState;
       }
     }
-    System.out.println("Computer choose " + bestState.minimaxValue);
-    boardState.children.clear();
+    System.out.println(String.format("\nMove: %s\nPos: row %d col %d\nNum pieces: %d / %d\nisWin: %b\nisTie: %b\n",
+          bestState.pieceMoved, bestState.movePosition.row, bestState.movePosition.col, bestState.numberPiecesMoved,
+          bestState.board.length * bestState.board[0].length, bestState.isWinState(), bestState.isTieState()));
+
     return bestState;
+    // return boardState.children.stream().max((c1, c2) -> Double.compare(c1.minimaxValue, c2.minimaxValue)).orElse(null);
   }
 
 
-  private void getMinimaxStateTree(BoardStateNode currentState, int alpha, int beta, int depth) {
-    
-    // current state is a leaf-node (winning state or max depth state) score it based on how good its move is
-    if (currentState.isWinningState() || depth == 0) {
-      currentState.evaluateStateBoard();
-      System.out.println(String.format("%s node - depth %d - set %d", currentState.pieceMoved, depth, currentState.minimaxValue));
+  private void getMinimaxStateTree(BoardStateNode currentState, double alpha, double beta, int depth) {
+
+    // if current state is a leaf-node (win, tie, or max depth state) score it based on how good its move is
+    if (currentState.isWinState() || currentState.isTieState() || depth == 0) {
+      currentState.evaluateBoard();
       return;
     }
 
-    // otherwise, current state is internal node, check all columns of its board to determine which moves can be made
+    // otherwise, check all columns of its board to determine which moves can be made and detemine its value recursively
     for (int col = 0; col < currentState.board[0].length; col++) {
 
       int row = nextValidRow(currentState.board, col);
@@ -151,24 +162,24 @@ public class Model {
         BoardStateNode childState = new BoardStateNode(currentState, new BoardPosition(row, col));
         currentState.addChild(childState);
 
-        getMinimaxStateTree(childState, alpha, beta, depth - 1); // continue to recursively build tree
+        // recursively build tree and determine minimax values from the bottom up
+        getMinimaxStateTree(childState, alpha, beta, depth - 1);
 
         // current node's value can now be determined after recursion, take min or max of child based on which piece is playing
         switch(currentState.pieceMoved) {
 
-          case Computer -> { // take min value, check beta
-            currentState.minimaxValue = Math.min(currentState.minimaxValue, childState.minimaxValue);
-            beta = Math.min(currentState.minimaxValue, beta);
-          }
-          case Player -> { // take max value, check alpha
+          case Computer -> { // take max value, check alpha
             currentState.minimaxValue = Math.max(currentState.minimaxValue, childState.minimaxValue);
-            alpha = Math.max(currentState.minimaxValue, alpha);
+            alpha = Math.max(alpha, currentState.minimaxValue);
+          }
+          case Player -> { // take min value, check beta
+            currentState.minimaxValue = Math.min(currentState.minimaxValue, childState.minimaxValue);
+            beta = Math.min(beta, currentState.minimaxValue);
           }
         }
-        if (alpha >= beta) return; // no need to continue building tree, min/max of branch already determined
+        if (alpha >= beta) break; // no need to continue building tree, min/max of branch already determined
       }
     }
-    System.out.println(String.format("%s node - depth %d - choose %d\n", currentState.pieceMoved, depth, currentState.minimaxValue));
   }
 
 

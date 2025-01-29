@@ -2,16 +2,16 @@ package com.example.a3_1.model;
 
 import java.util.ArrayList;
 
-
 import com.example.a3_1.model.Model.PieceType;
 
 public class BoardStateNode {
   
   public PieceType[][] board;
   protected PieceType pieceMoved;
+  protected int numberPiecesMoved;
   protected BoardPosition movePosition;
   public ArrayList<BoardPosition> winningSequence;
-  protected int minimaxValue;
+  protected double minimaxValue;
   protected ArrayList<BoardStateNode> children;
 
   // Constructor for initial empty board state
@@ -19,7 +19,7 @@ public class BoardStateNode {
     this.board = board;
     pieceMoved = PieceType.Computer;
     movePosition = new BoardPosition(0, 0);
-    minimaxValue = Integer.MAX_VALUE;
+    minimaxValue = -Double.MAX_VALUE;
   }
 
   // Constructor for board state after a move
@@ -31,9 +31,10 @@ public class BoardStateNode {
 
     // create state board from parent board
     getStateBoard(parentState.board);
+    numberPiecesMoved = parentState.numberPiecesMoved + 1;
 
     // pre-set default minimax value for convenience in getMinimaxStateTree function
-    minimaxValue = (pieceMoved == PieceType.Computer) ? Integer.MAX_VALUE : Integer.MIN_VALUE;
+    minimaxValue = (pieceMoved == PieceType.Computer) ? -Double.MAX_VALUE : Double.MAX_VALUE;
   }
 
 
@@ -58,7 +59,12 @@ public class BoardStateNode {
   }
 
 
-  public boolean isWinningState() {
+  public boolean isTieState() {
+    return numberPiecesMoved == board.length * board[0].length;
+  }
+
+
+  public boolean isWinState() {
     // very cool and fancy loop to check if a move results in a horizontal, vertical, or diagonal sequence of at least 4, checked in this order
     for (int[][] v: new int[][][] { {{0,1},{0,-1}}, {{1,0},{-1,0}}, {{1,1},{-1,-1}}, {{-1,1},{1,-1}} }) {
       
@@ -76,15 +82,49 @@ public class BoardStateNode {
   }
 
 
-  public int scoreWinningSequences(int row, int col, PieceType pieceType) {
+  private int getSequenceScore(int row, int col, PieceType piece) {
 
     int sequenceScore = 0;
-    // for (int[] v: new int[][] { {0,1}, {0,-1}, {1,0}, {-1,0}, {1,1}, {-1,-1}, {-1,1}, {1,-1} }) {
-    for (int[] v: new int[][] { {0,1}, {1,0}, {1,1}, {1,-1} }) {
-      // retrieve the a sequence of matching pieces in a given direction v, increment the score by the exponential seuqnce length
-      ArrayList<BoardPosition> sequence = getSequence(row, col, v, pieceType);
-      sequenceScore += Math.pow(sequence.size(), 2);
-    }                                                               
+
+    for (int[] v: new int[][] {{0,1}, {0,-1}, {1,0}, {-1,0}, {1,1}, {-1,-1}, {-1,1}, {1,-1}}) {
+      
+      int i = 1;
+      boolean threatPossible = true;
+      boolean emptySpaceUsed = false;
+
+      while (i <= 3 && threatPossible) {
+
+        int rowDi = row + v[0] * i;
+        int colDi = col + v[1] * i;
+
+        if (rowDi >= 0 && rowDi < board.length && colDi >= 0 && colDi < board[0].length) {
+          if (board[rowDi][colDi] == PieceType.None) { // empty space in sequence
+            if (!emptySpaceUsed) {
+              emptySpaceUsed = true;
+              i++;
+            }
+            else threatPossible = false;
+          }
+          else if (board[rowDi][colDi] != piece) { // opponent piece blocking
+            threatPossible = false;
+          }
+          else i++;
+        }
+        else threatPossible = false;
+      }
+
+      int threatBonus = (threatPossible) ? 2 : 1;
+      // sequenceScore += Math.pow((i - 1) * 2, 4) * threatBonus;
+
+      int x = 0;
+      switch (i) {
+        case 2 -> x = 10;
+        case 3 -> x = 50;
+        case 4 -> x = 1000;
+      }
+      sequenceScore += x * threatBonus;
+    }
+
     return sequenceScore;
   }
 
@@ -115,29 +155,20 @@ public class BoardStateNode {
   }
 
 
-  public void evaluateStateBoard() {
-    // priority #1 - piece wins the game on last move
-    if (isWinningState()) {
-      minimaxValue = (pieceMoved == PieceType.Player) ? Integer.MAX_VALUE : Integer.MIN_VALUE;
-      return;
-    }
+  public void evaluateBoard() {
 
     minimaxValue = 0; // reset value from default value only applicable to internal nodes
-
+    
     for (int row = 0; row < board.length; row++) {
       for (int col = 0; col < board[0].length; col++) {
-        
+
         PieceType piece = board[row][col];
         if (piece != PieceType.None) { // only evaluate player and computer tiles
+          double modifier = (piece == PieceType.Computer) ? 1.0 : -2.0;
 
-          // modifier to add or subtract points from total score based on whether the current piece belongs to player or computer
-          int modifier = (piece == PieceType.Player) ? 1 : -1; 
-
-          // add/subtract points based on how close a piece is to the center column from 0 (outer column) to 30 (center column)
-          minimaxValue += 3 - Math.abs(3 - col) *  modifier;
-
-          // add/subtract based on the sequences of matching pieces that start from a piece
-          minimaxValue += scoreWinningSequences(row, col, piece) * modifier;
+          minimaxValue += getSequenceScore(row, col, piece) * modifier;
+          // minimaxValue += (3 - Math.abs(3 - col)) * modifier;
+          // minimaxValue = minimaxValue / numberPiecesMoved;
         }
       }
     }

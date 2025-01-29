@@ -24,7 +24,7 @@ public class BottomBar extends HBox implements PublishSubscribe {
     
     // drop-down box to select minimax depth cutoff
     depthSelector = new ComboBox<>();
-    depthSelector.getItems().addAll(1, 2, 3, 4, 5, 6);
+    depthSelector.getItems().addAll(1, 2, 3, 4, 5, 6, 7, 8, 9, 10);
     depthSelector.setValue(4); // default value
     depthSelector.setOnAction(controller::handleAction);
 
