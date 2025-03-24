@@ -9,10 +9,11 @@ public class BoardPosition {
     this.col = col;
   }
 
+
   @Override
-  public boolean equals(Object object) {
-    if (object instanceof BoardPosition otherPosition) {
-      return otherPosition.row == row && otherPosition.col == col;
+  public boolean equals(Object o) {
+    if (o instanceof BoardPosition position) {
+      return position.row == row && position.col == col;
     }
     else return false;
   }

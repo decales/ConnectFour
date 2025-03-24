@@ -1,7 +1,5 @@
 package com.example.a3_1.view;
 
-import java.util.Stack;
-
 import com.example.a3_1.model.Model.PieceType;
 
 import javafx.geometry.Insets;

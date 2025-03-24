@@ -2,11 +2,9 @@ package com.example.a3_1.view;
 
 import com.example.a3_1.Controller;
 import com.example.a3_1.model.BoardPosition;
-import com.example.a3_1.model.BoardStateNode;
+import com.example.a3_1.model.BoardState;
 import com.example.a3_1.model.PublishSubscribe;
 import com.example.a3_1.model.Model.GameState;
-
-import javafx.geometry.Insets;
 import javafx.scene.Node;
 import javafx.scene.layout.GridPane;
 
@@ -29,7 +27,8 @@ public class GameBoard extends GridPane implements PublishSubscribe {
     setStyle("-fx-background-color: #2a2e3d");
   }
 
-  public void update(double displaySize, BoardStateNode boardState, GameState gameState, int playerWinCount, int computerWinCount) {
+
+  public void update(double displaySize, BoardState boardState, GameState gameState, int playerWinCount, int computerWinCount) {
     for (Node child : getChildren()) {
       if (child instanceof BoardPiece piece) {
         

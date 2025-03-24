@@ -1,12 +1,9 @@
 package com.example.a3_1.view;
 
-import java.util.List;
-
 import com.example.a3_1.Controller;
-import com.example.a3_1.model.BoardStateNode;
+import com.example.a3_1.model.BoardState;
 import com.example.a3_1.model.PublishSubscribe;
 import com.example.a3_1.model.Model.GameState;
-
 import javafx.scene.control.Button;
 import javafx.scene.control.ComboBox;
 import javafx.scene.layout.HBox;
@@ -31,7 +28,7 @@ public class BottomBar extends HBox implements PublishSubscribe {
     getChildren().addAll(resetButton, depthSelector);
   }
 
-  public void update(double displaySize, BoardStateNode boardState, GameState gameState, int playerWinCount, int computerWinCount) {
+  public void update(double displaySize, BoardState boardState, GameState gameState, int playerWinCount, int computerWinCount) {
     
   }
 }
