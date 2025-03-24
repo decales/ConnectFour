@@ -1,6 +1,7 @@
 package com.example.a3_1.view;
 
 import com.example.a3_1.Controller;
+import com.example.a3_1.model.BoardPosition;
 import com.example.a3_1.model.BoardState;
 import com.example.a3_1.model.PublishSubscribe;
 import com.example.a3_1.model.Model.GameState;
@@ -28,7 +29,14 @@ public class BottomBar extends HBox implements PublishSubscribe {
     getChildren().addAll(resetButton, depthSelector);
   }
 
-  public void update(double displaySize, BoardState boardState, GameState gameState, int playerWinCount, int computerWinCount) {
+
+  public void update(
+      double displaySize,
+      GameState gameState,
+      BoardState boardState,
+      BoardPosition previewPosition,
+      int playerWinCount,
+      int computerWinCount) {
     
   }
 }

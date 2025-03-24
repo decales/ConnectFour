@@ -4,7 +4,6 @@ import com.example.a3_1.model.Model;
 import com.example.a3_1.view.BoardPiece;
 
 import javafx.event.ActionEvent;
-import javafx.scene.Node;
 import javafx.scene.control.Button;
 import javafx.scene.control.ComboBox;
 import javafx.scene.input.MouseEvent;
@@ -34,16 +33,12 @@ private Model model;
 
 
   public void handleMouseExited(MouseEvent e) {
-    model.clearPreview();
+    model.previewTurn(-1); // sets previewPosition to null
   }
 
 
   public void handleAction(ActionEvent e) {
-    if (e.getTarget() instanceof Button) {
-      model.initializeGame();
-    }
-    else if (e.getTarget() instanceof ComboBox box) {
-      model.setMinimaxDepth((int)box.getValue());
-    }
+    if (e.getTarget() instanceof Button) model.initializeGame();
+    else if (e.getTarget() instanceof ComboBox box) model.setMinimaxDepth((int) box.getValue());
   }
 }

@@ -1,5 +1,6 @@
 package com.example.a3_1.model;
 
+import java.util.Arrays;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.stream.Stream;
@@ -134,6 +135,10 @@ public class BoardState {
         }
       }
     }
+  }
+
+  public int hashCode() {
+    return Arrays.deepHashCode(board);
   }
 
 

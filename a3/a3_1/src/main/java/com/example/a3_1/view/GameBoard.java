@@ -28,16 +28,26 @@ public class GameBoard extends GridPane implements PublishSubscribe {
   }
 
 
-  public void update(double displaySize, BoardState boardState, GameState gameState, int playerWinCount, int computerWinCount) {
+  public void update(
+      double displaySize, 
+      GameState gameState, 
+      BoardState boardState, 
+      BoardPosition previewPosition, 
+      int playerWinCount, 
+      int computerWinCount) {
+
     for (Node child : getChildren()) {
       if (child instanceof BoardPiece piece) {
         
         // if the game has ended, check if a piece is part of the game winning sequence
-        boolean inSequence = (gameState != GameState.InProgress) ? boardState.winningSequence.contains(new BoardPosition(piece.row, piece.col)) : false;
+        boolean inSequence = (gameState != GameState.InProgress) ? boardState.winningSequence.contains(piece.position) : false;
+
+        // check if the position is where the move preview indicator should be
+        boolean isPreview = piece.position.equals(previewPosition); 
         
         // update each piece on the board based on the data from the model
         piece.setSize(displaySize * 0.05);
-        piece.setType(boardState.board[piece.row][piece.col], inSequence);
+        piece.setType(boardState.board[piece.position.row][piece.position.col], isPreview, inSequence);
       }
     }
   }

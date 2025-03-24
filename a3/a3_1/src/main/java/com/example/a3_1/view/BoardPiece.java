@@ -1,5 +1,6 @@
 package com.example.a3_1.view;
 
+import com.example.a3_1.model.BoardPosition;
 import com.example.a3_1.model.Model.PieceType;
 
 import javafx.geometry.Insets;
@@ -12,7 +13,8 @@ public class BoardPiece extends StackPane {
 
   protected Circle pieceCircle;
   protected PieceType pieceType;
-  protected int row, col;
+  protected boolean isPreview;
+  protected BoardPosition position;
 
   public BoardPiece(int row, int col) {
 
@@ -20,10 +22,10 @@ public class BoardPiece extends StackPane {
     pieceCircle.setMouseTransparent(true);
     getChildren().add(pieceCircle);
     
-    setType(PieceType.None, false);
-    this.row = row;
-    this.col = col;
+    setType(PieceType.None, false, false);
+    position = new BoardPosition(row, col);
   }
+
 
   public void setSize(double size) {
     pieceCircle.setRadius(size);
@@ -31,33 +33,38 @@ public class BoardPiece extends StackPane {
     setPadding(new Insets(size * 0.2));
   }
 
-  public void setType(PieceType pieceType, boolean inSequence) {
-    if (this.pieceType != pieceType || inSequence) { // only update piece sprite if it needs to be
+
+  public void setType(PieceType pieceType, boolean isPreview, boolean inSequence) {
+    // only update piece sprite if it needs to be updated (piece is placed, preview should be shown/removed, piece is part of sequence)
+    if (this.pieceType != pieceType || (this.isPreview ^ isPreview) || inSequence) { 
 
       // update circle sprite
       Color pieceColour = 
         (pieceType == PieceType.Computer) ? Color.web("#151515") :
-        (pieceType == PieceType.None) ? Color.TRANSPARENT
+        (pieceType == PieceType.None && !isPreview) ? Color.TRANSPARENT
         : Color.web("#4a526d");
 
       Color borderColour = 
-        (pieceType == PieceType.None) ? Color.TRANSPARENT 
+        (pieceType == PieceType.None && !isPreview) ? Color.TRANSPARENT 
         : Color.BLACK;
 
       Color glowColour = 
-        (pieceType == PieceType.Preview) ? Color.CYAN :
+        (isPreview) ? Color.CYAN :
         (inSequence) ? Color.LIME
         : Color.TRANSPARENT;
 
       pieceCircle.setFill(pieceColour);
       pieceCircle.setStroke(borderColour);
       pieceCircle.setEffect(new DropShadow(pieceCircle.getRadius() * 0.2, glowColour));
-      
-      this.pieceType = pieceType; // update type 
+
+      // keep track to remember whether piece requires change on next update
+      this.pieceType = pieceType; 
+      this.isPreview = isPreview;
     }
   }
 
+
   public int getColumn() {
-    return col;
+    return position.col;
   }
 }

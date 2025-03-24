@@ -2,12 +2,13 @@ package com.example.a3_1.model;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
 
 
 public class Model {
 
-  public enum PieceType { Computer, Player, None, Preview };
+  public enum PieceType { Computer, Player, None };
   public enum GameState { InProgress, ComputerWin, PlayerWin, Tie };
 
   private List<PublishSubscribe> subscribers;
@@ -17,12 +18,14 @@ public class Model {
   private BoardPosition previewPosition;
   private GameState gameState;
   private int playerWinCount, computerWinCount;
+  private HashMap<BoardState, Double> boardMemo;
 
   public Model(double displaySize) {
 
     // initialize application data
     this.displaySize = displaySize;
     subscribers = new ArrayList<>();
+    boardMemo = new HashMap<>();
     minimaxDepth = 4;
     initializeGame(); 
   }
@@ -31,7 +34,6 @@ public class Model {
   public void initializeGame() {
     // initialize game state and vars
     gameState = GameState.InProgress;
-    previewPosition = new BoardPosition(0, 0);
 
     // initialize board state with empty 6x7 board
     boardState = new BoardState(new PieceType[6][7]);
@@ -49,24 +51,21 @@ public class Model {
 
   public void previewTurn(int col) {
     if (boardState.pieceMoved == PieceType.Computer && gameState == GameState.InProgress) { // player's turn
-      clearPreview(); // clear the previous piece preview indicator
-
-      int row = nextValidRow(boardState.board, col);
-      if (row != -1) { // check if the column is not full
-        // update the piece preview position and set it on the board
-        previewPosition = new BoardPosition(row, col);
-        boardState.board[previewPosition.row][previewPosition.col] = PieceType.Preview;
-      }
+      // player move preview only displays when previewPosition is not null
+      previewPosition = nextValidPosition(boardState.board, col);
       updateSubscribers();
     }
   }
 
 
-  public void clearPreview() {
-    if (boardState.board[previewPosition.row][previewPosition.col] == PieceType.Preview && gameState == GameState.InProgress) {
-      boardState.board[previewPosition.row][previewPosition.col] = PieceType.None;
-      updateSubscribers();
+  private BoardPosition nextValidPosition(PieceType[][] board, int col) {
+    if (col != -1) {
+      // look for the next empty position in the given column starting from the bottom row
+      for (int row = board.length - 1; row >= 0; row --) {
+        if (board[row][col] == PieceType.None) return new BoardPosition(row, col); // return the first available empty position
+      }
     }
+    return null; // otherwise, column is full (or invalid for piece preview)
   }
 
 
@@ -89,8 +88,9 @@ public class Model {
           
           // player's turn
           case Computer -> {
-            if (boardState.board[previewPosition.row][previewPosition.col] == PieceType.Preview) { // only play turn given the player's input
+            if (previewPosition != null) { // only play turn after the player's input, using previewPosition as 'lock' of sort
               boardState = new BoardState(boardState, previewPosition); // get updated state with player move
+              previewPosition = null;
             }
             else return;
           }
@@ -106,17 +106,6 @@ public class Model {
   }
  
 
-  private int nextValidRow(PieceType[][] board, int col) {
-    // return the next row a piece can be placed in for a column,
-    for (int row = board.length - 1; row >= 0; row--) { // Search for tile to place piece from bottom up
-      if (board[row][col] == PieceType.None) { // Place piece on tile if there isn't one already
-        return row;
-      } 
-    }
-    return -1; // column is full, -1 for no valid move
-  }
-
-
   private BoardState getComputerMove(BoardState currentState, double alpha, double beta, int depth) {
 
     BoardState bestState = null;
@@ -126,31 +115,32 @@ public class Model {
     else {
       // check all columns of the board to determine which moves/child states can be made
       for (int col = 0; col < currentState.board[0].length; col++) {
-        int row = nextValidRow(currentState.board, col); if (row != -1) {
+        BoardPosition movePosition = nextValidPosition(currentState.board, col); if (movePosition != null) {
 
           // create child state representing the board after the move  
-          BoardState childState = new BoardState(currentState, new BoardPosition(row, col));
+          BoardState childState = new BoardState(currentState, movePosition);
 
           // if the move immediately results in a terminal state, it is either the best move or the only move
           if (childState.isWinState() || childState.isTieState()) {
-            currentState.score = Double.MAX_VALUE;
+            // currentState.score = Double.MAX_VALUE;
+            currentState.score = 1337;
             bestState = childState;
           }
-          else { // otherwise, recursively build tree to score and determine best state
-            getComputerMove(childState, -beta, -Math.max(alpha, currentState.score), depth - 1);
+          else { // otherwise, build tree and propagate scores to determine best state at current level
+            getComputerMove(childState, -beta, -Math.max(alpha, currentState.score), depth - 1); // recursively determine child's score
 
             // take the maximum negated child score - the opponent's worst state is the current best state
             if (-childState.score > currentState.score) {
               currentState.score = -childState.score;
               bestState = childState;
             }
-            // stop creating and exploring children state when we know the opp 
-            if (currentState.score >= beta) break;         
           }
+          // stop creating and exploring children state when we know the opp 
+          if (currentState.score >= beta) break;        
         }
       }
     }
-    // best state is returned from the root of the tree and is dependant on the values propagated from terminal states
+    // best state is used at the root of the tree and is dependant on the values propagated from terminal states
     return bestState;
   }
   
@@ -163,7 +153,16 @@ public class Model {
 
   public void updateSubscribers() {
     subscribers.forEach(subscriber -> {
-      subscriber.update(displaySize, boardState, gameState, playerWinCount, computerWinCount);
+      subscriber.update(displaySize, gameState, boardState, previewPosition, playerWinCount, computerWinCount);
     });
   }
 }
+            // // check if child score is already in the memo
+            // if (boardMemo.containsKey(childState)) {
+            //   System.out.println("HIT");
+            //   childState.score = boardMemo.get(childState);
+            // }
+            // else { // otherwise recursively determine child's score then add it to the memo
+            //   getComputerMove(childState, -beta, -Math.max(alpha, currentState.score), depth - 1);
+            //   boardMemo.put(childState, childState.score);
+            // }
