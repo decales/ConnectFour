@@ -139,7 +139,18 @@ public class BoardState {
     }
   }
 
+
+  @Override
   public int hashCode() {
     return Arrays.deepHashCode(board);
+  }
+  
+
+  @Override
+  public boolean equals(Object o) {
+    if (o instanceof BoardState boardState) {
+      return Arrays.deepEquals(board, boardState.board);
+    }
+    else return false;
   }
 }

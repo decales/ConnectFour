@@ -4,7 +4,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
-
+import javafx.util.Pair;
 
 public class Model {
 
@@ -18,7 +18,7 @@ public class Model {
   private BoardPosition previewPosition;
   private GameState gameState;
   private int playerWinCount, computerWinCount;
-  private HashMap<BoardState, Double> boardMemo;
+  private HashMap<BoardState, Pair<Double, BoardState>> boardMemo;
 
   public Model(double displaySize) {
 
@@ -43,9 +43,10 @@ public class Model {
   }
 
 
-  public void setMinimaxDepth(int maxDepth) {
-    // used to set minimax depth in dropdown box
+  public void setDepth(int maxDepth) {
+    // used to set negamax traversal depth cutoff in dropdown box
     this.maxDepth = maxDepth;
+    boardMemo.clear();
   }
 
 
@@ -96,7 +97,6 @@ public class Model {
           }
           // computer's turn
           case Player -> {
-            // determine best move with negamax algorithm
             boardState = getComputerMove(boardState, -Double.MAX_VALUE, Double.MAX_VALUE, maxDepth); // get updated state with computer move
           }
         }
@@ -108,41 +108,41 @@ public class Model {
 
   // memoized negamax algorithm with AB pruning
   private BoardState getComputerMove(BoardState currentState, double alpha, double beta, int depth) {
-
+    
     BoardState bestState = null;
 
-    // when terminal state reached, evalulate the board so it can be propagated up the tree
-    if (currentState.isWinState() || currentState.isTieState()) bestState = currentState; // score is already -Double.MAX_VALUE - will be inverted
-    else if (depth == 0) currentState.evaluateBoard();
+    // if state has already been evaluated, return its score directly
+    if (boardMemo.containsKey(currentState)) {
+      currentState.score = boardMemo.get(currentState).getKey(); // best score
+      bestState = boardMemo.get(currentState).getValue(); // best child state
+    }
     else {
-      // check all columns of the board to determine which moves/child states can be made
-      for (int col = 0; col < currentState.board[0].length; col++) {
-        BoardPosition movePosition = nextValidPosition(currentState.board, col); if (movePosition != null) {
+      // when terminal state reached, evalulate the board so it can be propagated up the tree
+      if (currentState.isWinState() || currentState.isTieState()) bestState = currentState; // score is already -Double.MAX_VALUE - will be inverted
+      else if (depth == 0) currentState.evaluateBoard();
+      else {
+        // check all columns of the board to determine which moves/child states can be made
+        for (int col = 0; col < currentState.board[0].length; col++) {
+          BoardPosition movePosition = nextValidPosition(currentState.board, col); if (movePosition != null) {
 
-          // create child state representing the board after the move and recursively propagate scores to determine best state at current level
-          BoardState childState = new BoardState(currentState, movePosition);
-          // getComputerMove(childState, -beta, -Math.max(alpha, currentState.score), depth - 1); // recursively determine child's score
-
-          // check if child score is already in the memo
-          if (boardMemo.containsKey(childState)) {
-            System.out.println("HIT");
-            childState.score = boardMemo.get(childState);
-          }
-          else { // otherwise recursively determine child's score then add it to the memo
+            // create child state representing the board after the move and recursively propagate scores to determine best state at current level
+            BoardState childState = new BoardState(currentState, movePosition);
             getComputerMove(childState, -beta, -Math.max(alpha, currentState.score), depth - 1);
-            boardMemo.put(childState, childState.score);
-          }
 
-          // take the maximum negated child score - the opponent's worst state is the current best state
-          if (-childState.score > currentState.score) {
-            currentState.score = -childState.score;
-            bestState = childState;
+            // take the maximum negated child score - the opponent's worst state is the current best state
+            if (-childState.score > currentState.score) {
+              currentState.score = -childState.score;
+              bestState = childState;
+            }
           }
+          // stop creating and exploring children state when we know the opp 
+          if (currentState.score >= beta) break;        
         }
-        // stop creating and exploring children state when we know the opp 
-        if (currentState.score >= beta) break;        
+        // add state to the memo now that best child and score are determined
+        boardMemo.put(currentState, new Pair<>(currentState.score, bestState));
       }
     }
+
     // best state is used at the root of the tree and is dependant on the values propagated from terminal states
     if (depth == maxDepth) System.out.println(currentState.score);
     return bestState;
