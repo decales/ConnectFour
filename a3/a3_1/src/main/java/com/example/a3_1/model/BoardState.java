@@ -90,8 +90,10 @@ public class BoardState {
   }
 
 
-  
   public void evaluateBoard() {
+    // because scores are inverted each negaMax call and evaluation is from perspective of the player that moved last
+    // negative scores are better for this player and positive score are better for their opponent
+
     // loop through board bottom-right to top-left, evaluating the piece positions using two heuristics
     score = 0;
     for (int i = board.length - 1; i >= 0; i--) {
@@ -99,7 +101,7 @@ public class BoardState {
 
         // heuristic #1 - add/subtract points based on how close a piece is to the center column from 0 (outer column) to 30 (center column)
         if (board[i][j] != PieceType.None) {
-          score += Math.pow(3 - Math.abs(3 - j), 2) * ((board[i][j]) == pieceMoved ? 1 : -1);
+          score += Math.pow(3 - Math.abs(3 - j), 2) * ((board[i][j]) == pieceMoved ? -1 : 1);
         }
 
         // heuristic #2 - score all 4-length 'windows' in board
@@ -109,8 +111,8 @@ public class BoardState {
         for (int k = 0; k <= 3; k++) {
           // check horizontally - [0][j]
           if (j - 3 >= 0) {
-            if (board[i][j - k] == pieceMoved) pieceCounts[0][0] ++; // matching piece - add to score
-            else if (board[i][j - k] != PieceType.None) pieceCounts[0][1] ++; // opponent piece - subtract from score
+            if (board[i][j - k] == pieceMoved) pieceCounts[0][0] ++; // matching piece -> - score
+            else if (board[i][j - k] != PieceType.None) pieceCounts[0][1] ++; // opponent piece -> + score
           }
           // check vertically - [1][j]
           if (i - 3 >= 0) {
@@ -128,10 +130,10 @@ public class BoardState {
             else if (board[i - k][j + k] != PieceType.None) pieceCounts[3][1] ++;
           }
         }
-        // loop through piece count array - score window by taking difference of matching vs. opponent pieces
+        // loop through piece count array - score window by taking difference of opponent v. matching pieces
         for (int[] windowCount : pieceCounts) {
-          // bonus when window contains contains empty square - threat potential
-          score += Math.pow(windowCount[0] - windowCount[1], 3) * (((windowCount[0] + windowCount[1] < 4) ? 1.5 : 1)); 
+          // 1.5x bonus when window contains contains empty square - threat potential
+          score += Math.pow(windowCount[1] - windowCount[0], 3) * (((windowCount[0] + windowCount[1] < 4) ? 1.5 : 1)); 
         }
       }
     }
@@ -140,107 +142,4 @@ public class BoardState {
   public int hashCode() {
     return Arrays.deepHashCode(board);
   }
-
-
-
-  // private int getSequenceScore(int row, int col, PieceType piece) {
-  //
-  //   int sequenceScore = 0;
-  //
-  //   for (int[] v: new int[][] {{0,1}, {0,-1}, {1,0}, {-1,0}, {1,1}, {-1,-1}, {-1,1}, {1,-1}}) {
-  //     
-  //     int i = 1;
-  //     boolean threatPossible = true;
-  //     boolean emptySpaceUsed = false;
-  //
-  //     while (i <= 3 && threatPossible) {
-  //
-  //       int rowDi = row + v[0] * i;
-  //       int colDi = col + v[1] * i;
-  //
-  //       if (rowDi >= 0 && rowDi < board.length && colDi >= 0 && colDi < board[0].length) {
-  //         if (board[rowDi][colDi] == PieceType.None) { // empty space in sequence
-  //           if (!emptySpaceUsed) {
-  //             emptySpaceUsed = true;
-  //             i++;
-  //           }
-  //           else threatPossible = false;
-  //         }
-  //         else if (board[rowDi][colDi] != piece) { // opponent piece blocking
-  //           threatPossible = false;
-  //         }
-  //         else i++;
-  //       }
-  //       else threatPossible = false;
-  //     }
-  //
-  //     int threatBonus = (threatPossible) ? 2 : 1;
-  //     // sequenceScore += Math.pow((i - 1) * 2, 4) * threatBonus;
-  //
-  //     int x = 0;
-  //     switch (i) {
-  //       case 2 -> x = 10;
-  //       case 3 -> x = 50;
-  //       case 4 -> x = 1000;
-  //     }
-  //     sequenceScore += x * threatBonus;
-  //   }
-  //
-  //   return sequenceScore;
-  // }
-
-
-  // public int scoreBoard(PieceType piece) {
-  //
-  //   int score = 0;
-  //
-  //   for (int[][] d : new int[][][] {
-  //     // check entire length of board horizontally, vertically, and diagonally
-  //     // {start, step, next, end}
-  //     {{board.length - 1, board[0].length - 1}, {0, -1}, {-1, 0}, {0, 0}}, // horizontal left-right, bottom-top
-  //     {{board.length - 1, board[0].length - 1}, {-1, 0}, {0, -1}, {0, 0}}, // vertical bottom-top, left-right
-  //     {{0, board[0].length - 1}, {-1, -1}, {1, 0}, {board.length - 1, 0}}, // diagonal top-bottom, right-left      
-  //     {{0, 0}, {-1, 1}, {1, 0}, {board.length - 1, board[0].length - 1}}}) { // diagonal top-bottom, left-right
-  //
-  //     int i = 0; 
-  //     int j = 0;
-  //     int count = 0; // length of sequence
-  //
-  //     while (true) {
-  //       int adjRow = (d[0][0] + d[2][0] * i) + (d[1][0] * j);
-  //       int adjCol = (d[0][1] + d[2][1] * i) + (d[1][1] * j);
-  //
-  //       if (adjRow >= 0 && adjRow < board.length && adjCol >= 0 && adjCol < board[0].length) {
-  //         // if the current piece matches the type we are checking for, increment the sequence count
-  //         if (board[adjRow][adjCol] == piece) count++;
-  //         else { // otherwise get score based on how long the sequence has been so far
-  //           score += Math.pow(count, 3);
-  //           count = 0;
-  //         }
-  //       }
-  //       // check if current position is end position, or if either i or j are out of bounds
-  //       if (adjRow == d[3][0] && adjCol == d[3][1]) break;
-  //       else if (adjRow < 0 || adjCol < 0) { i++; j = 0; }
-  //       else j++;
-  //     }
-  //   }
-  //   return score;
-  // }
-
-
-  // public void evaluateBoard() {
-  //   score = 0;
-  //   
-  //   for (int row = 0; row < board.length; row++) {
-  //     for (int col = 0; col < board[0].length; col++) {
-  //
-  //       PieceType piece = board[row][col];
-  //       if (piece != PieceType.None) { // only evaluate player and computer tiles
-  //         double modifier = (piece == pieceMoved) ? 1.0 : -2.0;
-  //         score += getSequenceScore(row, col, piece) * modifier;
-  //       }
-  //     }
-  //   }
-  //   System.out.println(score);
-  // }
 }

@@ -14,7 +14,7 @@ public class Model {
   private List<PublishSubscribe> subscribers;
   private double displaySize;
   private BoardState boardState;
-  private int minimaxDepth;
+  private int maxDepth;
   private BoardPosition previewPosition;
   private GameState gameState;
   private int playerWinCount, computerWinCount;
@@ -26,7 +26,7 @@ public class Model {
     this.displaySize = displaySize;
     subscribers = new ArrayList<>();
     boardMemo = new HashMap<>();
-    minimaxDepth = 4;
+    maxDepth = 4;
     initializeGame(); 
   }
 
@@ -43,9 +43,9 @@ public class Model {
   }
 
 
-  public void setMinimaxDepth(int minimaxDepth) {
+  public void setMinimaxDepth(int maxDepth) {
     // used to set minimax depth in dropdown box
-    this.minimaxDepth = minimaxDepth;
+    this.maxDepth = maxDepth;
   }
 
 
@@ -88,7 +88,7 @@ public class Model {
           
           // player's turn
           case Computer -> {
-            if (previewPosition != null) { // only play turn after the player's input, using previewPosition as 'lock' of sort
+            if (previewPosition != null) { // only play turn after mouse click, using previewPosition as 'lock' of sort
               boardState = new BoardState(boardState, previewPosition); // get updated state with player move
               previewPosition = null;
             }
@@ -96,54 +96,58 @@ public class Model {
           }
           // computer's turn
           case Player -> {
-            // determine its best move with negamax algorithm
-            boardState = getComputerMove(boardState, -Double.MAX_VALUE, Double.MAX_VALUE, minimaxDepth); // get updated state with computer move
+            // determine best move with negamax algorithm
+            boardState = getComputerMove(boardState, -Double.MAX_VALUE, Double.MAX_VALUE, maxDepth); // get updated state with computer move
           }
         }
       }
-      playTurn(); // play opponent's turn or make terminal recursive call
+      playTurn(); // play opponent's turn or make terminal recursive call after game has ended
     }
   }
  
 
+  // memoized negamax algorithm with AB pruning
   private BoardState getComputerMove(BoardState currentState, double alpha, double beta, int depth) {
 
     BoardState bestState = null;
 
-    // when maximum depth reached, evalulate the board so it can be propagated up the tree
-    if (depth == 0) currentState.evaluateBoard();
+    // when terminal state reached, evalulate the board so it can be propagated up the tree
+    if (currentState.isWinState() || currentState.isTieState()) bestState = currentState; // score is already -Double.MAX_VALUE - will be inverted
+    else if (depth == 0) currentState.evaluateBoard();
     else {
       // check all columns of the board to determine which moves/child states can be made
       for (int col = 0; col < currentState.board[0].length; col++) {
         BoardPosition movePosition = nextValidPosition(currentState.board, col); if (movePosition != null) {
 
-          // create child state representing the board after the move  
+          // create child state representing the board after the move and recursively propagate scores to determine best state at current level
           BoardState childState = new BoardState(currentState, movePosition);
+          // getComputerMove(childState, -beta, -Math.max(alpha, currentState.score), depth - 1); // recursively determine child's score
 
-          // if the move immediately results in a terminal state, it is either the best move or the only move
-          if (childState.isWinState() || childState.isTieState()) {
-            // currentState.score = Double.MAX_VALUE;
-            currentState.score = 1337;
+          // check if child score is already in the memo
+          if (boardMemo.containsKey(childState)) {
+            System.out.println("HIT");
+            childState.score = boardMemo.get(childState);
+          }
+          else { // otherwise recursively determine child's score then add it to the memo
+            getComputerMove(childState, -beta, -Math.max(alpha, currentState.score), depth - 1);
+            boardMemo.put(childState, childState.score);
+          }
+
+          // take the maximum negated child score - the opponent's worst state is the current best state
+          if (-childState.score > currentState.score) {
+            currentState.score = -childState.score;
             bestState = childState;
           }
-          else { // otherwise, build tree and propagate scores to determine best state at current level
-            getComputerMove(childState, -beta, -Math.max(alpha, currentState.score), depth - 1); // recursively determine child's score
-
-            // take the maximum negated child score - the opponent's worst state is the current best state
-            if (-childState.score > currentState.score) {
-              currentState.score = -childState.score;
-              bestState = childState;
-            }
-          }
-          // stop creating and exploring children state when we know the opp 
-          if (currentState.score >= beta) break;        
         }
+        // stop creating and exploring children state when we know the opp 
+        if (currentState.score >= beta) break;        
       }
     }
     // best state is used at the root of the tree and is dependant on the values propagated from terminal states
+    if (depth == maxDepth) System.out.println(currentState.score);
     return bestState;
   }
-  
+
 
   public void addSubscribers(PublishSubscribe... subscribers) {
     this.subscribers = Arrays.asList(subscribers);
@@ -157,12 +161,3 @@ public class Model {
     });
   }
 }
-            // // check if child score is already in the memo
-            // if (boardMemo.containsKey(childState)) {
-            //   System.out.println("HIT");
-            //   childState.score = boardMemo.get(childState);
-            // }
-            // else { // otherwise recursively determine child's score then add it to the memo
-            //   getComputerMove(childState, -beta, -Math.max(alpha, currentState.score), depth - 1);
-            //   boardMemo.put(childState, childState.score);
-            // }
