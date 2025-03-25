@@ -1,5 +1,7 @@
 package com.example.a3_1.view;
 
+import java.io.PrintStream;
+
 import com.example.a3_1.Controller;
 import com.example.a3_1.model.BoardPosition;
 import com.example.a3_1.model.BoardState;
@@ -10,14 +12,8 @@ import javafx.scene.layout.GridPane;
 
 public class GameBoard extends GridPane implements PublishSubscribe {
 
-  public GameBoard(int numRows, int numCols, Controller controller) {
+  public GameBoard(Controller controller) {
 
-    // initialize BoardPiece children and add them to the grid
-    for (int i = 0; i < numRows; i++) {
-      for (int j = 0; j < numCols; j++) {
-        add(new BoardPiece(i, j), j, i);
-      }
-    }
     // setup event handlers
     setOnMouseClicked(controller::handleMouseClicked);
     setOnMouseMoved(controller::handleMouseMoved);
@@ -26,6 +22,18 @@ public class GameBoard extends GridPane implements PublishSubscribe {
     setGridLinesVisible(true);
     setStyle("-fx-background-color: #2a2e3d");
   }
+  
+  public void initializeBoard(int numRows, int numCols) {
+    getChildren().clear();
+
+    // initialize BoardPiece children and add them to the grid
+    for (int i = 0; i < numRows; i++) {
+      for (int j = 0; j < numCols; j++) {
+        add(new BoardPiece(i, j), j, i);
+      }
+    }
+    setGridLinesVisible(true);
+  }
 
 
   public void update(
@@ -33,12 +41,16 @@ public class GameBoard extends GridPane implements PublishSubscribe {
       GameState gameState, 
       BoardState boardState, 
       BoardPosition previewPosition, 
-      int playerWinCount, 
-      int computerWinCount) {
+      int playerWinCount, int computerWinCount) {
+
+    // initialize the board when app opens or when board dimensions are toggled
+    if (getChildren().size() != boardState.board.length * boardState.board[0].length) {
+      initializeBoard(boardState.board.length, boardState.board[0].length);
+    }
 
     for (Node child : getChildren()) {
       if (child instanceof BoardPiece piece) {
-        
+
         // if the game has ended, check if a piece is part of the game winning sequence
         boolean inSequence = (gameState != GameState.InProgress) ? boardState.winningSequence.contains(piece.position) : false;
 
@@ -46,7 +58,7 @@ public class GameBoard extends GridPane implements PublishSubscribe {
         boolean isPreview = piece.position.equals(previewPosition); 
         
         // update each piece on the board based on the data from the model
-        piece.setSize(displaySize * 0.05);
+        piece.setSize((displaySize * 0.3) / boardState.board.length);
         piece.setType(boardState.board[piece.position.row][piece.position.col], isPreview, inSequence);
       }
     }

@@ -5,6 +5,7 @@ import com.example.a3_1.view.BoardPiece;
 import javafx.event.ActionEvent;
 import javafx.scene.control.Button;
 import javafx.scene.control.ComboBox;
+import javafx.scene.control.RadioButton;
 import javafx.scene.input.MouseEvent;
 
 
@@ -37,7 +38,16 @@ private Model model;
 
 
   public void handleAction(ActionEvent e) {
-    if (e.getTarget() instanceof Button) model.initializeGame();
-    else if (e.getTarget() instanceof ComboBox box) model.setDepth((int) box.getValue());
+
+    switch(e.getTarget()) {
+      case Button button -> model.initializeGame();
+      case ComboBox box -> model.setDepth((int) box.getValue());
+      case RadioButton rbutton -> {
+        //  what is defensive programming???
+        String[] dimensionStrs = rbutton.getText().split(" x ");
+        model.initializeGame(Integer.parseInt(dimensionStrs[0]), Integer.parseInt(dimensionStrs[1]));
+      }
+      default -> {}
+    }
   }
 }

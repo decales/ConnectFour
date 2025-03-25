@@ -13,6 +13,7 @@ public class BottomBar extends HBox implements PublishSubscribe {
 
   private Button resetButton;
   private ComboBox<Integer> depthSelector;
+  private DimensionsToggle dimensionsToggle;
 
   public BottomBar(Controller controller) {
 
@@ -26,7 +27,9 @@ public class BottomBar extends HBox implements PublishSubscribe {
     depthSelector.setValue(4); // default value
     depthSelector.setOnAction(controller::handleAction);
 
-    getChildren().addAll(resetButton, depthSelector);
+    dimensionsToggle = new DimensionsToggle(controller);
+
+    getChildren().addAll(resetButton, depthSelector, dimensionsToggle);
   }
 
 
@@ -37,6 +40,8 @@ public class BottomBar extends HBox implements PublishSubscribe {
       BoardPosition previewPosition,
       int playerWinCount,
       int computerWinCount) {
+
+    dimensionsToggle.update(displaySize);
     
   }
 }

@@ -36,7 +36,7 @@ public class App extends Application {
       //
 
       ScoreBar scoreBar = new ScoreBar();
-      GameBoard gameBoard = new GameBoard(6, 7, controller);
+      GameBoard gameBoard = new GameBoard(controller);
       BottomBar bottomBar = new BottomBar(controller);
 
       model.addSubscribers(scoreBar, gameBoard, bottomBar);

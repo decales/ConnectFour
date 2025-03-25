@@ -13,11 +13,11 @@ public class Model {
 
   private List<PublishSubscribe> subscribers;
   private double displaySize;
-  private BoardState boardState;
-  private int maxDepth;
-  private BoardPosition previewPosition;
   private GameState gameState;
   private int playerWinCount, computerWinCount;
+  private int maxDepth;
+  private BoardState boardState;
+  private BoardPosition previewPosition;
   private HashMap<BoardState, Pair<Double, BoardState>> boardMemo;
 
   public Model(double displaySize) {
@@ -25,18 +25,25 @@ public class Model {
     // initialize application data
     this.displaySize = displaySize;
     subscribers = new ArrayList<>();
-    boardMemo = new HashMap<>();
     maxDepth = 4;
-    initializeGame(); 
+    boardMemo = new HashMap<>();
+    initializeGame(6, 7);
   }
 
 
-  public void initializeGame() {
-    // initialize game state and vars
+  public void initializeGame(int rowCount, int colCount) {
+    // set gameState and initialize board state with empty board based on the selected dimensions
     gameState = GameState.InProgress;
+    boardState = new BoardState(new PieceType[rowCount][colCount]);
+    for (int i = 0; i < boardState.board.length; i++) Arrays.fill(boardState.board[i], PieceType.None);
+    
+    updateSubscribers();
+  }
 
-    // initialize board state with empty 6x7 board
-    boardState = new BoardState(new PieceType[6][7]);
+  public void initializeGame() {
+    // set gameState and initialize board state with empty board based on the selected dimensions
+    gameState = GameState.InProgress;
+    boardState = new BoardState(new PieceType[boardState.board.length][boardState.board[0].length]);
     for (int i = 0; i < boardState.board.length; i++) Arrays.fill(boardState.board[i], PieceType.None);
     
     updateSubscribers();
@@ -49,7 +56,7 @@ public class Model {
     boardMemo.clear();
   }
 
-
+  
   public void previewTurn(int col) {
     if (boardState.pieceMoved == PieceType.Computer && gameState == GameState.InProgress) { // player's turn
       // player move preview only displays when previewPosition is not null
