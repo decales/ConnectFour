@@ -4,6 +4,8 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Stack;
+
 import javafx.util.Pair;
 
 public class Model {
@@ -17,6 +19,7 @@ public class Model {
   private int playerWinCount, computerWinCount;
   private int maxDepth;
   private BoardState boardState;
+  private Stack<BoardState> previousBoardStates;
   private BoardPosition previewPosition;
   private HashMap<BoardState, Pair<Double, BoardState>> boardMemo;
 
@@ -34,19 +37,17 @@ public class Model {
   public void initializeGame(int rowCount, int colCount) {
     // set gameState and initialize board state with empty board based on the selected dimensions
     gameState = GameState.InProgress;
+    previousBoardStates = new Stack<>(); // stack to keep track of previous player board states for undo functionality
     boardState = new BoardState(new PieceType[rowCount][colCount]);
     for (int i = 0; i < boardState.board.length; i++) Arrays.fill(boardState.board[i], PieceType.None);
     
     updateSubscribers();
   }
 
+
   public void initializeGame() {
-    // set gameState and initialize board state with empty board based on the selected dimensions
-    gameState = GameState.InProgress;
-    boardState = new BoardState(new PieceType[boardState.board.length][boardState.board[0].length]);
-    for (int i = 0; i < boardState.board.length; i++) Arrays.fill(boardState.board[i], PieceType.None);
-    
-    updateSubscribers();
+    // used in reset button
+    initializeGame(boardState.board.length, boardState.board[0].length);
   }
 
 
@@ -54,6 +55,18 @@ public class Model {
     // used to set negamax traversal depth cutoff in dropdown box
     this.maxDepth = maxDepth;
     boardMemo.clear();
+  }
+  
+
+  public void undoTurn() {
+    // reset to the board state before the player's last move
+    // if the last move resulted in a win, undo that too
+    if (!previousBoardStates.isEmpty()) {
+      if (gameState == GameState.PlayerWin) { playerWinCount--; gameState = GameState.InProgress; } 
+      else if (gameState == GameState.ComputerWin) { computerWinCount--; gameState = GameState.InProgress; } 
+      boardState = previousBoardStates.pop();
+      updateSubscribers();
+    }
   }
 
   
@@ -97,6 +110,7 @@ public class Model {
           // player's turn
           case Computer -> {
             if (previewPosition != null) { // only play turn after mouse click, using previewPosition as 'lock' of sort
+              previousBoardStates.push(boardState); // save the state before making the move into undo stack
               boardState = new BoardState(boardState, previewPosition); // get updated state with player move
               previewPosition = null;
             }
@@ -149,7 +163,6 @@ public class Model {
         boardMemo.put(currentState, new Pair<>(currentState.score, bestState));
       }
     }
-
     // best state is used at the root of the tree and is dependant on the values propagated from terminal states
     if (depth == maxDepth) System.out.println(currentState.score);
     return bestState;

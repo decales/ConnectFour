@@ -1,7 +1,5 @@
 package com.example.a3_1.view;
 
-import java.io.PrintStream;
-
 import com.example.a3_1.Controller;
 import com.example.a3_1.model.BoardPosition;
 import com.example.a3_1.model.BoardState;
@@ -32,7 +30,8 @@ public class GameBoard extends GridPane implements PublishSubscribe {
         add(new BoardPiece(i, j), j, i);
       }
     }
-    setGridLinesVisible(true);
+    // yes, this is necessary if you want the gridlines to reappear after clearing the children :)
+    setGridLinesVisible(false); setGridLinesVisible(true);
   }
 
 
@@ -51,14 +50,16 @@ public class GameBoard extends GridPane implements PublishSubscribe {
     for (Node child : getChildren()) {
       if (child instanceof BoardPiece piece) {
 
-        // if the game has ended, check if a piece is part of the game winning sequence
-        boolean inSequence = (gameState != GameState.InProgress) ? boardState.winningSequence.contains(piece.position) : false;
+        // if a player has won, check if a piece is part of the game winning sequence
+        boolean inSequence = (gameState == GameState.PlayerWin || gameState == GameState.ComputerWin) 
+        ? boardState.winningSequence.contains(piece.position)
+        : false;
 
         // check if the position is where the move preview indicator should be
-        boolean isPreview = piece.position.equals(previewPosition); 
+        boolean isPreview = (gameState == GameState.InProgress) ? piece.position.equals(previewPosition) : false; 
         
         // update each piece on the board based on the data from the model
-        piece.setSize((displaySize * 0.3) / boardState.board.length);
+        piece.setSize((displaySize * 0.3) / (boardState.board.length));
         piece.setType(boardState.board[piece.position.row][piece.position.col], isPreview, inSequence);
       }
     }

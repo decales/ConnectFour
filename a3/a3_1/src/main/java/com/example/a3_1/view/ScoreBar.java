@@ -17,12 +17,11 @@ public class ScoreBar extends HBox implements PublishSubscribe {
   private Button ResetButton;
   
   public ScoreBar() {
+    setAlignment(Pos.CENTER);
 
     playerScoreLabel = new Label();
     computerScoreLabel = new Label();
     getChildren().addAll(playerScoreLabel, computerScoreLabel);
-
-    setAlignment(Pos.CENTER);
   }
 
 

@@ -7,9 +7,8 @@ import com.example.a3_1.view.ScoreBar;
 
 import javafx.application.Application;
 import javafx.geometry.Insets;
+import javafx.geometry.Pos;
 import javafx.scene.Scene;
-import javafx.scene.layout.AnchorPane;
-import javafx.scene.layout.HBox;
 import javafx.scene.layout.VBox;
 import javafx.stage.Screen;
 import javafx.stage.Stage;
@@ -19,7 +18,7 @@ public class App extends Application {
     public void start(Stage stage) {
 
       double displayHeight = Screen.getPrimary().getBounds().getHeight();
-      double displayRatio = 0.8;
+      double displayRatio = 0.85;
       double rootPadding = displayHeight * displayRatio * 0.025;        
 
       // Initialize model
@@ -30,7 +29,8 @@ public class App extends Application {
 
       // // Initialize UI components
       VBox root = new VBox();
-      root.paddingProperty().set(new Insets(rootPadding));
+      root.setAlignment(Pos.CENTER);
+      // root.paddingProperty().set(new Insets(rootPadding));
       // root.spacingProperty().set(rootPadding);
       // root.setStyle("-fx-background-color: lightgrey");
       //

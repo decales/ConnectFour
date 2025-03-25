@@ -2,8 +2,9 @@ package com.example.a3_1;
 
 import com.example.a3_1.model.Model;
 import com.example.a3_1.view.BoardPiece;
+import com.example.a3_1.view.ResetButton;
+import com.example.a3_1.view.UndoButton;
 import javafx.event.ActionEvent;
-import javafx.scene.control.Button;
 import javafx.scene.control.ComboBox;
 import javafx.scene.control.RadioButton;
 import javafx.scene.input.MouseEvent;
@@ -38,13 +39,12 @@ private Model model;
 
 
   public void handleAction(ActionEvent e) {
-
     switch(e.getTarget()) {
-      case Button button -> model.initializeGame();
+      case ResetButton rButton -> model.initializeGame();
+      case UndoButton uButton -> model.undoTurn();
       case ComboBox box -> model.setDepth((int) box.getValue());
-      case RadioButton rbutton -> {
-        //  what is defensive programming???
-        String[] dimensionStrs = rbutton.getText().split(" x ");
+      case RadioButton radioButton -> { //  this is bad and I'm not sorry
+        String[] dimensionStrs = radioButton.getText().split(" x ");
         model.initializeGame(Integer.parseInt(dimensionStrs[0]), Integer.parseInt(dimensionStrs[1]));
       }
       default -> {}

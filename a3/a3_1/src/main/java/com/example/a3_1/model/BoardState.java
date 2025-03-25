@@ -9,7 +9,7 @@ import com.example.a3_1.model.Model.PieceType;
 public class BoardState {
 
   public PieceType[][] board;
-  protected double score;
+  protected double score = -Double.MAX_VALUE;
   protected int numberPiecesMoved;
   protected PieceType pieceMoved;
   protected BoardPosition movePosition;
@@ -17,10 +17,9 @@ public class BoardState {
 
   // Constructor for initial empty board state
   public BoardState(PieceType[][] board) {
-    this.board = board;
     pieceMoved = PieceType.Computer; // computer is always "last to move" in initial state because player moves first
     movePosition = new BoardPosition(0, 0);
-    score = -Double.MAX_VALUE;
+    this.board = board;
   }
 
   // Constructor for board state after a move
@@ -28,9 +27,8 @@ public class BoardState {
     // keep track of which piece moved and where
     pieceMoved = (parentState.pieceMoved == PieceType.Computer) ? PieceType.Player : PieceType.Computer; // alternate players on state creation
     this.movePosition = movePosition;
-    getStateBoard(parentState.board); // create state board from parent board
     numberPiecesMoved = parentState.numberPiecesMoved + 1;
-    score = -Double.MAX_VALUE;
+    getStateBoard(parentState.board); // create state board from parent board
   }
 
 
@@ -99,9 +97,9 @@ public class BoardState {
     for (int i = board.length - 1; i >= 0; i--) {
       for (int j = board[0].length - 1; j >= 0; j--) {
 
-        // heuristic #1 - add/subtract points based on how close a piece is to the center column from 0 (outer column) to 30 (center column)
+        // heuristic #1 - add/subtract points based on how close a piece is to the center column
         if (board[i][j] != PieceType.None) {
-          score += Math.pow(3 - Math.abs(3 - j), 2) * ((board[i][j]) == pieceMoved ? -1 : 1);
+          score += Math.pow((board[0].length / 2) - Math.abs((board[0].length / 2) - j), 2) * ((board[i][j]) == pieceMoved ? -1 : 1);
         }
 
         // heuristic #2 - score all 4-length 'windows' in board
