@@ -5,42 +5,42 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Stack;
-
 import javafx.util.Pair;
+import com.example.a3_1.model.AppState.GameState;
 
 public class Model {
 
   public enum PieceType { Computer, Player, None };
-  public enum GameState { InProgress, ComputerWin, PlayerWin, Tie };
 
   private List<PublishSubscribe> subscribers;
-  private double displaySize;
-  private GameState gameState;
-  private int playerWinCount, computerWinCount;
-  private int maxDepth;
+  private AppState appState;
   private BoardState boardState;
   private Stack<BoardState> previousBoardStates;
-  private BoardPosition previewPosition;
-  private HashMap<BoardState, Pair<Double, BoardState>> boardMemo;
+  private HashMap<BoardState, Pair<Double, BoardPosition>> stateMemo;
 
   public Model(double displaySize) {
 
-    // initialize application data
-    this.displaySize = displaySize;
+    // application/game data
     subscribers = new ArrayList<>();
-    maxDepth = 4;
-    boardMemo = new HashMap<>();
+    appState = new AppState();
+    appState.displaySize = displaySize;
+    appState.maxDepth = 4;
+    
+    // board data
+    previousBoardStates = new Stack<>(); // stack to keep track of previous player board states for undo functionality
+    stateMemo = new HashMap<>(); // memo to reduce complexity of negamax search 
     initializeGame(6, 7);
   }
 
 
   public void initializeGame(int rowCount, int colCount) {
-    // set gameState and initialize board state with empty board based on the selected dimensions
-    gameState = GameState.InProgress;
-    previousBoardStates = new Stack<>(); // stack to keep track of previous player board states for undo functionality
+    // set game state and initialize board state with empty board based on the selected dimensions
     boardState = new BoardState(new PieceType[rowCount][colCount]);
     for (int i = 0; i < boardState.board.length; i++) Arrays.fill(boardState.board[i], PieceType.None);
     
+    previousBoardStates.clear(); 
+    appState.canUndo = false;
+    appState.state = GameState.InProgress;
     updateSubscribers();
   }
 
@@ -53,35 +53,35 @@ public class Model {
 
   public void setDepth(int maxDepth) {
     // used to set negamax traversal depth cutoff in dropdown box
-    this.maxDepth = maxDepth;
-    boardMemo.clear();
+    appState.maxDepth = maxDepth;
+    stateMemo.clear();
   }
   
 
   public void undoTurn() {
     // reset to the board state before the player's last move
     // if the last move resulted in a win, undo that too
-    if (!previousBoardStates.isEmpty()) {
-      if (gameState == GameState.PlayerWin) { playerWinCount--; gameState = GameState.InProgress; } 
-      else if (gameState == GameState.ComputerWin) { computerWinCount--; gameState = GameState.InProgress; } 
-      boardState = previousBoardStates.pop();
-      updateSubscribers();
-    }
+    boardState = previousBoardStates.pop();
+    if (appState.state == GameState.PlayerWin) { appState.playerWinCount--; appState.state = GameState.InProgress; } 
+    else if (appState.state == GameState.ComputerWin) { appState.computerWinCount--; appState.state = GameState.InProgress; } 
+    appState.canUndo = !previousBoardStates.isEmpty();
+    updateSubscribers();
   }
 
   
-  public void previewTurn(int col) {
-    if (boardState.pieceMoved == PieceType.Computer && gameState == GameState.InProgress) { // player's turn
+  public void previewMove(int col) {
+    if (boardState.moveType == PieceType.Computer && appState.state == GameState.InProgress) { // player's turn
       // player move preview only displays when previewPosition is not null
-      previewPosition = nextValidPosition(boardState.board, col);
+      boardState.movePosition = getValidMove(boardState.board, col);
+      appState.canMove = boardState.movePosition != null; // lock to prevent move until mouse is moved again
       updateSubscribers();
     }
   }
 
 
-  private BoardPosition nextValidPosition(PieceType[][] board, int col) {
+  private BoardPosition getValidMove(PieceType[][] board, int col) {
+    // look for the next empty position in the given column starting from the bottom row
     if (col != -1) {
-      // look for the next empty position in the given column starting from the bottom row
       for (int row = board.length - 1; row >= 0; row --) {
         if (board[row][col] == PieceType.None) return new BoardPosition(row, col); // return the first available empty position
       }
@@ -90,61 +90,51 @@ public class Model {
   }
 
 
-  public void playTurn() {
-    updateSubscribers();
-
-    if (gameState == GameState.InProgress) {
-
-      // check if last move resulted in win
-      if (boardState.isWinState()) {         
-        gameState = (boardState.pieceMoved == PieceType.Computer) ? GameState.ComputerWin : GameState.PlayerWin;
-        if (boardState.pieceMoved == PieceType.Computer) computerWinCount++; else playerWinCount ++;
-      }
-      // check if last move resulted in tie
-      else if (boardState.isTieState()) gameState = GameState.Tie;
-
-      // otherwise play turn
-      else { // next piece to play is the opposing piece of the last piece played in the current state
-        switch(boardState.pieceMoved) {
-          
-          // player's turn
-          case Computer -> {
-            if (previewPosition != null) { // only play turn after mouse click, using previewPosition as 'lock' of sort
-              previousBoardStates.push(boardState); // save the state before making the move into undo stack
-              boardState = new BoardState(boardState, previewPosition); // get updated state with player move
-              previewPosition = null;
+  public void playMove() {
+    if (appState.state == GameState.InProgress) {
+      // next piece to play is the opponent of the last piece played in the current state
+      switch(boardState.moveType) {
+        case Computer -> { // player turn
+            if (appState.canMove) { 
+              previousBoardStates.push(boardState); // save state before making the move for undo purposes
+              boardState = new BoardState(boardState, boardState.movePosition); // get state after move
+              if (boardState.isWinState()) { appState.state = GameState.PlayerWin; appState.playerWinCount ++; }
+              else if (boardState.isTieState()) appState.state = GameState.Tie;
+              appState.canMove = false;
+              playMove(); // play computer's turn if move was not win/tie
             }
-            else return;
-          }
-          // computer's turn
-          case Player -> {
-            boardState = getComputerMove(boardState, -Double.MAX_VALUE, Double.MAX_VALUE, maxDepth); // get updated state with computer move
-          }
+        }
+        case Player -> { // computer turn
+          boardState = new BoardState(boardState, getComputerMove(boardState, -Double.MAX_VALUE, Double.MAX_VALUE, appState.maxDepth)); 
+          if (boardState.isWinState()) { appState.state = GameState.ComputerWin; appState.computerWinCount ++; }
+          else if (boardState.isTieState()) appState.state = GameState.Tie;
         }
       }
-      playTurn(); // play opponent's turn or make terminal recursive call after game has ended
     }
+    appState.canUndo = !previousBoardStates.isEmpty();
+    updateSubscribers();
   }
- 
+
 
   // memoized negamax algorithm with AB pruning
-  private BoardState getComputerMove(BoardState currentState, double alpha, double beta, int depth) {
+  private BoardPosition getComputerMove(BoardState currentState, double alpha, double beta, int depth) {
     
-    BoardState bestState = null;
+    // initialize 'best move' as random move instead of null - fail safe to prevent returning null states (even though this shouldn't happen!)
+    BoardPosition bestMove = getValidMove(currentState.board, (int) (Math.random() * currentState.board[0].length));
 
     // if state has already been evaluated, return its score directly
-    if (boardMemo.containsKey(currentState)) {
-      currentState.score = boardMemo.get(currentState).getKey(); // best score
-      bestState = boardMemo.get(currentState).getValue(); // best child state
+    if (stateMemo.containsKey(currentState)) {
+      currentState.score = stateMemo.get(currentState).getKey(); // best score
+      bestMove = stateMemo.get(currentState).getValue(); // best move
     }
     else {
       // when terminal state reached, evalulate the board so it can be propagated up the tree
-      if (currentState.isWinState() || currentState.isTieState()) bestState = currentState; // score is already -Double.MAX_VALUE - will be inverted
+      if (currentState.isWinState() || currentState.isTieState()) bestMove = currentState.movePosition; // default score -infinity - will be inverted
       else if (depth == 0) currentState.evaluateBoard();
       else {
         // check all columns of the board to determine which moves/child states can be made
         for (int col = 0; col < currentState.board[0].length; col++) {
-          BoardPosition movePosition = nextValidPosition(currentState.board, col); if (movePosition != null) {
+          BoardPosition movePosition = getValidMove(currentState.board, col); if (movePosition != null) {
 
             // create child state representing the board after the move and recursively propagate scores to determine best state at current level
             BoardState childState = new BoardState(currentState, movePosition);
@@ -153,19 +143,18 @@ public class Model {
             // take the maximum negated child score - the opponent's worst state is the current best state
             if (-childState.score > currentState.score) {
               currentState.score = -childState.score;
-              bestState = childState;
+              bestMove = movePosition;
             }
           }
           // stop creating and exploring children state when we know the opp 
           if (currentState.score >= beta) break;        
         }
-        // add state to the memo now that best child and score are determined
-        boardMemo.put(currentState, new Pair<>(currentState.score, bestState));
+      // add state to the memo now that best child and score are determined
+      stateMemo.put(currentState, new Pair<>(currentState.score, bestMove));
       }
     }
-    // best state is used at the root of the tree and is dependant on the values propagated from terminal states
-    if (depth == maxDepth) System.out.println(currentState.score);
-    return bestState;
+    // best state is taken at the root of the tree and is dependant on the values propagated from terminal states
+    return bestMove;
   }
 
 
@@ -176,8 +165,6 @@ public class Model {
 
 
   public void updateSubscribers() {
-    subscribers.forEach(subscriber -> {
-      subscriber.update(displaySize, gameState, boardState, previewPosition, playerWinCount, computerWinCount);
-    });
+    subscribers.forEach(subscriber -> subscriber.update(appState, boardState));
   }
 }

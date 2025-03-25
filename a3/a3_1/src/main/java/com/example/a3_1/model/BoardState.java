@@ -11,23 +11,22 @@ public class BoardState {
   public PieceType[][] board;
   protected double score = -Double.MAX_VALUE;
   protected int numberPiecesMoved;
-  protected PieceType pieceMoved;
-  protected BoardPosition movePosition;
+  protected PieceType moveType;
+  public BoardPosition movePosition;
   public List<BoardPosition> winningSequence;
 
-  // Constructor for initial empty board state
+  // constructor for initial or cloned board state
   public BoardState(PieceType[][] board) {
-    pieceMoved = PieceType.Computer; // computer is always "last to move" in initial state because player moves first
-    movePosition = new BoardPosition(0, 0);
+    moveType = PieceType.Computer; // computer is always "last to move" in initial state because player moves first
     this.board = board;
   }
 
-  // Constructor for board state after a move
+  // constructor for board state after a move
   public BoardState(BoardState parentState, BoardPosition movePosition) {
     // keep track of which piece moved and where
-    pieceMoved = (parentState.pieceMoved == PieceType.Computer) ? PieceType.Player : PieceType.Computer; // alternate players on state creation
-    this.movePosition = movePosition;
     numberPiecesMoved = parentState.numberPiecesMoved + 1;
+    moveType = (parentState.moveType == PieceType.Computer) ? PieceType.Player : PieceType.Computer; // alternate players on state creation
+    this.movePosition = movePosition;
     getStateBoard(parentState.board); // create state board from parent board
   }
 
@@ -43,7 +42,7 @@ public class BoardState {
       }
     }
     // add the move to the child board
-    board[movePosition.row][movePosition.col] = pieceMoved;
+    board[movePosition.row][movePosition.col] = moveType;
   }
 
 
@@ -80,7 +79,7 @@ public class BoardState {
     if (adjRow < 0 || adjRow >= board.length || adjCol < 0 || adjCol >= board[0].length) return sequence;
     
     // sequence ends at opponent piece
-    if (board[adjRow][adjCol] != pieceMoved) return sequence;
+    if (board[adjRow][adjCol] != moveType) return sequence;
 
     // otherwhise traverse to adjacent piece in direction of sequence
     sequence.add(new BoardPosition(adjRow, adjCol));
@@ -99,7 +98,7 @@ public class BoardState {
 
         // heuristic #1 - add/subtract points based on how close a piece is to the center column
         if (board[i][j] != PieceType.None) {
-          score += Math.pow((board[0].length / 2) - Math.abs((board[0].length / 2) - j), 2) * ((board[i][j]) == pieceMoved ? -1 : 1);
+          score += Math.pow((board[0].length / 2) - Math.abs((board[0].length / 2) - j), 2) * ((board[i][j]) == moveType ? -1 : 1);
         }
 
         // heuristic #2 - score all 4-length 'windows' in board
@@ -109,22 +108,22 @@ public class BoardState {
         for (int k = 0; k <= 3; k++) {
           // check horizontally - [0][j]
           if (j - 3 >= 0) {
-            if (board[i][j - k] == pieceMoved) pieceCounts[0][0] ++; // matching piece -> - score
+            if (board[i][j - k] == moveType) pieceCounts[0][0] ++; // matching piece -> - score
             else if (board[i][j - k] != PieceType.None) pieceCounts[0][1] ++; // opponent piece -> + score
           }
           // check vertically - [1][j]
           if (i - 3 >= 0) {
-            if (board[i - k][j] == pieceMoved) pieceCounts[1][0] ++;
+            if (board[i - k][j] == moveType) pieceCounts[1][0] ++;
             else if (board[i - k][j] != PieceType.None) pieceCounts[1][1] ++;
           }
           // check left-diagonal - [2][j]
           if (j - 3 >= 0 && i - 3 >= 0) {
-            if (board[i - k][j - k] == pieceMoved) pieceCounts[2][0] ++;
+            if (board[i - k][j - k] == moveType) pieceCounts[2][0] ++;
             else if (board[i - k][j - k] != PieceType.None) pieceCounts[2][1] ++;
           }
           // check right-diagonal - [3][j]
           if (j + 3 < board[0].length && i - 3 >= 0) {
-            if (board[i - k][j + k] == pieceMoved) pieceCounts[3][0] ++;
+            if (board[i - k][j + k] == moveType) pieceCounts[3][0] ++;
             else if (board[i - k][j + k] != PieceType.None) pieceCounts[3][1] ++;
           }
         }

@@ -1,14 +1,12 @@
 package com.example.a3_1.view;
 
 import com.example.a3_1.Controller;
-import com.example.a3_1.model.BoardPosition;
+import com.example.a3_1.model.AppState;
 import com.example.a3_1.model.BoardState;
 import com.example.a3_1.model.PublishSubscribe;
-import com.example.a3_1.model.Model.GameState;
 
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
-import javafx.scene.control.Button;
 import javafx.scene.layout.HBox;
 
 public class BottomBar extends HBox implements PublishSubscribe {
@@ -37,20 +35,14 @@ public class BottomBar extends HBox implements PublishSubscribe {
   }
 
 
-  public void update(
-      double displaySize,
-      GameState gameState,
-      BoardState boardState,
-      BoardPosition previewPosition,
-      int playerWinCount,
-      int computerWinCount) {
+  public void update(AppState appState, BoardState boardState) {
 
-    setPadding(new Insets(displaySize * 0.001));
-    setSpacing(displaySize * 0.075);
+    setPadding(new Insets(appState.displaySize * 0.001));
+    setSpacing(appState.displaySize * 0.075);
 
-    resetButton.update(displaySize);
-    undoButton.update(displaySize);
-    depthSelector.update(displaySize);
-    dimensionsToggle.update(displaySize);
+    resetButton.update(appState.displaySize);
+    undoButton.update(appState.displaySize, appState.canUndo);
+    depthSelector.update(appState.displaySize);
+    dimensionsToggle.update(appState.displaySize);
   }
 }

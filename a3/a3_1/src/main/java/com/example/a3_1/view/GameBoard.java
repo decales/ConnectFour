@@ -1,10 +1,11 @@
 package com.example.a3_1.view;
 
 import com.example.a3_1.Controller;
-import com.example.a3_1.model.BoardPosition;
+import com.example.a3_1.model.AppState;
 import com.example.a3_1.model.BoardState;
 import com.example.a3_1.model.PublishSubscribe;
-import com.example.a3_1.model.Model.GameState;
+import com.example.a3_1.model.AppState.GameState;
+
 import javafx.scene.Node;
 import javafx.scene.layout.GridPane;
 
@@ -35,12 +36,7 @@ public class GameBoard extends GridPane implements PublishSubscribe {
   }
 
 
-  public void update(
-      double displaySize, 
-      GameState gameState, 
-      BoardState boardState, 
-      BoardPosition previewPosition, 
-      int playerWinCount, int computerWinCount) {
+  public void update(AppState appState, BoardState boardState) {
 
     // initialize the board when app opens or when board dimensions are toggled
     if (getChildren().size() != boardState.board.length * boardState.board[0].length) {
@@ -51,15 +47,17 @@ public class GameBoard extends GridPane implements PublishSubscribe {
       if (child instanceof BoardPiece piece) {
 
         // if a player has won, check if a piece is part of the game winning sequence
-        boolean inSequence = (gameState == GameState.PlayerWin || gameState == GameState.ComputerWin) 
+        boolean inSequence = (appState.state == GameState.PlayerWin || appState.state == GameState.ComputerWin) 
         ? boardState.winningSequence.contains(piece.position)
         : false;
 
         // check if the position is where the move preview indicator should be
-        boolean isPreview = (gameState == GameState.InProgress) ? piece.position.equals(previewPosition) : false; 
+        boolean isPreview = (appState.state == GameState.InProgress && boardState.movePosition != null) 
+        ? piece.position.equals(boardState.movePosition) 
+        : false; 
         
         // update each piece on the board based on the data from the model
-        piece.setSize((displaySize * 0.3) / (boardState.board.length));
+        piece.setSize((appState.displaySize * 0.3) / (boardState.board.length));
         piece.setType(boardState.board[piece.position.row][piece.position.col], isPreview, inSequence);
       }
     }

@@ -21,20 +21,20 @@ private Model model;
 
   public void handleMouseClicked(MouseEvent e) {
     if (e.getTarget() instanceof BoardPiece) {
-      model.playTurn();
+      model.playMove();
     }
   }
 
 
   public void handleMouseMoved(MouseEvent e) {
     if (e.getTarget() instanceof BoardPiece piece) {
-      model.previewTurn(piece.getColumn());
+      model.previewMove(piece.getColumn());
     }
   }
 
 
   public void handleMouseExited(MouseEvent e) {
-    model.previewTurn(-1); // sets previewPosition to null
+    model.previewMove(-1); // sets previewPosition to null
   }
 
 

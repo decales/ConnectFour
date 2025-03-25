@@ -11,7 +11,8 @@ public class UndoButton extends Button {
   }
 
 
-  public void update(double displaySize) {
+  public void update(double displaySize, boolean canUndo) {
     setStyle(String.format("-fx-text-fill: black; -fx-font-size: %f", displaySize * 0.0175));
+    this.setDisable(!canUndo);
   }
 }

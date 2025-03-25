@@ -42,8 +42,8 @@ public class DimensionsToggle extends VBox {
     radioButtonBox.setSpacing(displaySize * 0.02);
     for (Node node : radioButtonBox.getChildren()) {
       RadioButton button = (RadioButton) node;
-      button.setStyle(String.format("-fx-text-fill: black; -fx-font-size: %f", displaySize * 0.015));
+      button.setStyle(String.format("-fx-text-fill: black; -fx-font-size: %f", displaySize * 0.01333));
     }
-    setSpacing(displaySize * 0.005);
+    setSpacing(displaySize * 0.00333);
   }
 }
