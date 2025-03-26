@@ -10,8 +10,8 @@ public class BoardState {
 
   public PieceType[][] board;
   protected double score = -Double.MAX_VALUE;
-  protected int numberPiecesMoved;
   protected PieceType moveType;
+  public int numberPiecesMoved;
   public BoardPosition movePosition;
   public List<BoardPosition> winningSequence;
 
@@ -46,7 +46,7 @@ public class BoardState {
   }
 
 
-  public boolean isTieState() {
+  public boolean isDrawState() {
     return numberPiecesMoved == board.length * board[0].length;
   }
 

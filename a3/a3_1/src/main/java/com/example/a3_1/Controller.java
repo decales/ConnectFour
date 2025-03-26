@@ -1,9 +1,8 @@
 package com.example.a3_1;
 
 import com.example.a3_1.model.Model;
-import com.example.a3_1.view.BoardPiece;
-import com.example.a3_1.view.ResetButton;
-import com.example.a3_1.view.UndoButton;
+import com.example.a3_1.view.gameBoard.*;
+import com.example.a3_1.view.bottomBar.*;
 import javafx.event.ActionEvent;
 import javafx.scene.control.ComboBox;
 import javafx.scene.control.RadioButton;

@@ -1,4 +1,4 @@
-package com.example.a3_1.view;
+package com.example.a3_1.view.gameBoard;
 
 import com.example.a3_1.model.BoardPosition;
 import com.example.a3_1.model.Model.PieceType;
@@ -22,20 +22,17 @@ public class BoardPiece extends StackPane {
     pieceCircle.setMouseTransparent(true);
     getChildren().add(pieceCircle);
     
-    setType(PieceType.None, false, false);
     position = new BoardPosition(row, col);
   }
 
 
-  public void setSize(double size) {
+  public void update(double size, PieceType pieceType, boolean isPreview, boolean inSequence) {
+    // update size
     pieceCircle.setRadius(size);
     pieceCircle.setStrokeWidth(size * 0.15);
     setPadding(new Insets(size * 0.2));
-  }
 
-
-  public void setType(PieceType pieceType, boolean isPreview, boolean inSequence) {
-    // only update piece sprite if it needs to be updated (piece is placed, preview should be shown/removed, piece is part of sequence)
+    // only update sprite if it needs to be updated (piece is placed, preview should be shown/removed, piece is part of sequence)
     if (this.pieceType != pieceType || (this.isPreview ^ isPreview) || inSequence) { 
 
       // update circle sprite
@@ -49,13 +46,13 @@ public class BoardPiece extends StackPane {
         : Color.BLACK;
 
       Color glowColour = 
-        (isPreview) ? Color.CYAN :
-        (inSequence) ? Color.LIME
+        ((pieceType == PieceType.Computer && inSequence) || (pieceType == PieceType.Computer && isPreview)) ? Color.web("#FF65C8") :
+        ((pieceType == PieceType.Player && inSequence) || isPreview) ? Color.web("#31FFFF")
         : Color.TRANSPARENT;
 
       pieceCircle.setFill(pieceColour);
       pieceCircle.setStroke(borderColour);
-      pieceCircle.setEffect(new DropShadow(pieceCircle.getRadius() * 0.2, glowColour));
+      pieceCircle.setEffect(new DropShadow(pieceCircle.getRadius() * 0.275, glowColour));
 
       // keep track to remember whether piece requires change on next update
       this.pieceType = pieceType; 

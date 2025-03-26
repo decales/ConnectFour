@@ -1,11 +1,11 @@
-package com.example.a3_1.view;
+package com.example.a3_1.view.gameBoard;
 
 import com.example.a3_1.Controller;
 import com.example.a3_1.model.AppState;
 import com.example.a3_1.model.BoardState;
 import com.example.a3_1.model.PublishSubscribe;
 import com.example.a3_1.model.AppState.GameState;
-
+import javafx.geometry.Pos;
 import javafx.scene.Node;
 import javafx.scene.layout.GridPane;
 
@@ -18,8 +18,7 @@ public class GameBoard extends GridPane implements PublishSubscribe {
     setOnMouseMoved(controller::handleMouseMoved);
     setOnMouseExited(controller::handleMouseExited);
 
-    setGridLinesVisible(true);
-    setStyle("-fx-background-color: #2a2e3d");
+    setAlignment(Pos.CENTER);
   }
   
   public void initializeBoard(int numRows, int numCols) {
@@ -37,6 +36,14 @@ public class GameBoard extends GridPane implements PublishSubscribe {
 
 
   public void update(AppState appState, BoardState boardState) {
+
+    setStyle(String.format(
+          "-fx-background-color: #2a2e3d;"+ 
+          "-fx-border-color: #000000;"+
+          "-fx-border-width: %fpx;"+
+          "-fx-border-radius: %fpx;"+
+          "-fx-background-radius: %fpx;", 
+          appState.displaySize * 0.00667, appState.displaySize * 0.015, appState.displaySize * 0.03));
 
     // initialize the board when app opens or when board dimensions are toggled
     if (getChildren().size() != boardState.board.length * boardState.board[0].length) {
@@ -57,8 +64,10 @@ public class GameBoard extends GridPane implements PublishSubscribe {
         : false; 
         
         // update each piece on the board based on the data from the model
-        piece.setSize((appState.displaySize * 0.3) / (boardState.board.length));
-        piece.setType(boardState.board[piece.position.row][piece.position.col], isPreview, inSequence);
+        piece.update(
+          (appState.displaySize * 0.3) / (boardState.board.length), 
+          boardState.board[piece.position.row][piece.position.col], 
+          isPreview, inSequence);
       }
     }
   }

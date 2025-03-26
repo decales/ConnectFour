@@ -60,11 +60,15 @@ public class Model {
 
   public void undoTurn() {
     // reset to the board state before the player's last move
-    // if the last move resulted in a win, undo that too
     boardState = previousBoardStates.pop();
-    if (appState.state == GameState.PlayerWin) { appState.playerWinCount--; appState.state = GameState.InProgress; } 
-    else if (appState.state == GameState.ComputerWin) { appState.computerWinCount--; appState.state = GameState.InProgress; } 
     appState.canUndo = !previousBoardStates.isEmpty();
+
+    // if the last move resulted in a win or tie, undo that too
+    switch (appState.state) {
+      case PlayerWin -> { appState.playerScore--; appState.state = GameState.InProgress; }
+      case ComputerWin -> { appState.computerScore--; appState.state = GameState.InProgress; }
+      case Draw -> { appState.state = GameState.InProgress; }
+    }
     updateSubscribers();
   }
 
@@ -98,16 +102,16 @@ public class Model {
             if (appState.canMove) { 
               previousBoardStates.push(boardState); // save state before making the move for undo purposes
               boardState = new BoardState(boardState, boardState.movePosition); // get state after move
-              if (boardState.isWinState()) { appState.state = GameState.PlayerWin; appState.playerWinCount ++; }
-              else if (boardState.isTieState()) appState.state = GameState.Tie;
+              if (boardState.isWinState()) { appState.state = GameState.PlayerWin; appState.playerScore ++; }
+              else if (boardState.isDrawState()) appState.state = GameState.Draw;
               appState.canMove = false;
               playMove(); // play computer's turn if move was not win/tie
             }
         }
         case Player -> { // computer turn
           boardState = new BoardState(boardState, getComputerMove(boardState, -Double.MAX_VALUE, Double.MAX_VALUE, appState.maxDepth)); 
-          if (boardState.isWinState()) { appState.state = GameState.ComputerWin; appState.computerWinCount ++; }
-          else if (boardState.isTieState()) appState.state = GameState.Tie;
+          if (boardState.isWinState()) { appState.state = GameState.ComputerWin; appState.computerScore ++; }
+          else if (boardState.isDrawState()) appState.state = GameState.Draw;
         }
       }
     }
@@ -119,7 +123,7 @@ public class Model {
   // memoized negamax algorithm with AB pruning
   private BoardPosition getComputerMove(BoardState currentState, double alpha, double beta, int depth) {
     
-    // initialize 'best move' as random move instead of null - fail safe to prevent returning null states (even though this shouldn't happen!)
+    // initialize 'best move' as random move instead of null - fail safe to prevent returning null moves (even though this shouldn't happen!)
     BoardPosition bestMove = getValidMove(currentState.board, (int) (Math.random() * currentState.board[0].length));
 
     // if state has already been evaluated, return its score directly
@@ -129,7 +133,7 @@ public class Model {
     }
     else {
       // when terminal state reached, evalulate the board so it can be propagated up the tree
-      if (currentState.isWinState() || currentState.isTieState()) bestMove = currentState.movePosition; // default score -infinity - will be inverted
+      if (currentState.isWinState() || currentState.isDrawState()) bestMove = currentState.movePosition; // default score -infinity - will be inverted
       else if (depth == 0) currentState.evaluateBoard();
       else {
         // check all columns of the board to determine which moves/child states can be made

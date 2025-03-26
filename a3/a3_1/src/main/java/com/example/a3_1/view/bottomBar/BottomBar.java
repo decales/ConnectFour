@@ -1,10 +1,9 @@
-package com.example.a3_1.view;
+package com.example.a3_1.view.bottomBar;
 
 import com.example.a3_1.Controller;
 import com.example.a3_1.model.AppState;
 import com.example.a3_1.model.BoardState;
 import com.example.a3_1.model.PublishSubscribe;
-
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.layout.HBox;
@@ -19,16 +18,9 @@ public class BottomBar extends HBox implements PublishSubscribe {
   public BottomBar(Controller controller) {
     setAlignment(Pos.CENTER);
     
-    // button to reset game
     resetButton = new ResetButton(controller);
-
-    // button to undo the last player move
     undoButton = new UndoButton(controller);
-
-    // drop-down box to select minimax depth cutoff
     depthSelector = new DepthSelector(controller);
-
-    // radio buttons to select dimensions of game board
     dimensionsToggle = new DimensionsToggle(controller);
 
     getChildren().addAll(resetButton, undoButton, depthSelector, dimensionsToggle);
@@ -36,8 +28,9 @@ public class BottomBar extends HBox implements PublishSubscribe {
 
 
   public void update(AppState appState, BoardState boardState) {
+    double p = appState.displaySize * 0.015;
+    setPadding(new Insets(p, p * 3, 0, p * 3));
 
-    setPadding(new Insets(appState.displaySize * 0.001));
     setSpacing(appState.displaySize * 0.075);
 
     resetButton.update(appState.displaySize);

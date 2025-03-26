@@ -1,14 +1,15 @@
-package com.example.a3_1.view;
+package com.example.a3_1.view.bottomBar;
 
 import com.example.a3_1.Controller;
-
 import javafx.geometry.Pos;
 import javafx.scene.Node;
 import javafx.scene.control.Label;
 import javafx.scene.control.RadioButton;
 import javafx.scene.control.ToggleGroup;
+import javafx.scene.effect.DropShadow;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.VBox;
+import javafx.scene.paint.Color;
 
 public class DimensionsToggle extends VBox {
 
@@ -19,7 +20,7 @@ public class DimensionsToggle extends VBox {
   public DimensionsToggle(Controller controller) {
     setAlignment(Pos.CENTER);
 
-    mainLabel = new Label("Board dimensions");
+    mainLabel = new Label("Dimensions");
 
     radioButtonBox = new HBox();
     radioButtons = new ToggleGroup();
@@ -37,12 +38,12 @@ public class DimensionsToggle extends VBox {
 
   public void update(double displaySize) {
 
-    mainLabel.setStyle(String.format("-fx-text-fill: black; -fx-font-size: %f", displaySize * 0.0175));
+    mainLabel.setStyle(String.format("-fx-text-fill: #7781A3; -fx-font-size: %f", displaySize * 0.02));
 
     radioButtonBox.setSpacing(displaySize * 0.02);
     for (Node node : radioButtonBox.getChildren()) {
       RadioButton button = (RadioButton) node;
-      button.setStyle(String.format("-fx-text-fill: black; -fx-font-size: %f", displaySize * 0.01333));
+      button.setStyle(String.format("-fx-text-fill: #7781A3; -fx-font-size: %f", displaySize * 0.015));
     }
     setSpacing(displaySize * 0.00333);
   }
