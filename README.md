@@ -1,6 +1,6 @@
 ## ConnectFour
 
-This application is a simple [Connect Four](https://en.wikipedia.org/wiki/Connect_Four) game where a user player competes against a negamax-based computur player. The application also allows the user to control various gameplay elements that affect the state of the
+This application is a simple [Connect Four](https://en.wikipedia.org/wiki/Connect_Four) game where a user player competes against a negamax-based computer player. The application also allows the user to control various gameplay elements that affect the state of the
 board and the behaviour and efficiency of the computer player in determining its next best move.
 
 ### Getting Started
